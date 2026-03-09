@@ -238,6 +238,10 @@ class Agent:
         log.info("[%s] Starting run (model=%s, tools=%d, skills=%d)",
                  self.name, self.model, len(self.tools), len(self.skills))
 
+        # Reset context for fresh run (keep only externally pinned task_data entries)
+        task_data = [e for e in self.context.entries if e.tag == "task_data" and e.pinned]
+        self.context.entries = task_data
+
         self.context.add_system(self._build_system(), pinned=True, tag="system")
         self.context.add_user(user_message, tag="history")
 
