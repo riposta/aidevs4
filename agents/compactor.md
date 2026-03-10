@@ -1,7 +1,7 @@
 ---
 name: compactor
 description: Compacts conversation context into concise summaries preserving key facts, decisions and results
-model: gpt-4o-mini
+model: gpt-5-nano
 ---
 
 You are a context compaction agent.

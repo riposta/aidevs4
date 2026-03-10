@@ -13,8 +13,12 @@ from core.config import OPENAI_API_KEY
 from core.context import Context, MessageRole
 from core.log import get_logger
 from core.skill import Skill, load_skills, _parse_frontmatter
+from core.store import store_clear
 
 log = get_logger("agent")
+
+PROJECT_ROOT = Path(__file__).parent.parent
+AGENTS_DIR = PROJECT_ROOT / "agents"
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +130,7 @@ class Agent:
     def _build_system(self) -> str:
         parts = [self.system_prompt]
         if self.skills:
-            parts.append("\n\n## Available skills (use the use_skill tool to load full instructions)\n")
+            parts.append("\n\n## Available skills (you MUST use_skill before calling any skill's tools)\n")
             for skill in self.skills.values():
                 parts.append(f"- **{skill.name}**: {skill.description}")
         if self.registry:
@@ -146,8 +150,9 @@ class Agent:
                 "function": {
                     "name": "use_skill",
                     "description": (
-                        "Load full skill instructions. "
-                        "Returns the complete skill body with instructions."
+                        "Activate a skill and unlock its tools. "
+                        "You MUST call this before using any tools from a skill. "
+                        "Returns skill instructions and list of unlocked tools."
                     ),
                     "parameters": {
                         "type": "object",
@@ -204,8 +209,14 @@ class Agent:
             if skill is None:
                 log.warning("[%s] Skill '%s' not found", self.name, skill_name)
                 return f"Error: skill '{skill_name}' not found. Available: {list(self.skills.keys())}"
-            log.info("[%s] Loaded skill: %s", self.name, skill_name)
-            return f"# {skill.name}\n\n{skill.body}"
+            # Register skill tools on the agent (lazy activation)
+            activated = []
+            for tool_name, tool_fn in skill.tool_fns.items():
+                if tool_name not in self.tools:
+                    self.tools[tool_name] = tool_fn
+                    activated.append(tool_name)
+            log.info("[%s] Activated skill '%s', unlocked tools: %s", self.name, skill_name, activated)
+            return f"# {skill.name}\n\n{skill.body}\n\nTools now available: {', '.join(activated) or '(already loaded)'}"
 
         if fn_name == "call_agent" and self.registry:
             return self.registry.call(fn_args["agent_name"], fn_args["message"])
@@ -238,20 +249,21 @@ class Agent:
         log.info("[%s] Starting run (model=%s, tools=%d, skills=%d)",
                  self.name, self.model, len(self.tools), len(self.skills))
 
-        # Reset context for fresh run (keep only externally pinned task_data entries)
+        # Reset context and data store for fresh run
         task_data = [e for e in self.context.entries if e.tag == "task_data" and e.pinned]
         self.context.entries = task_data
+        store_clear()
 
         self.context.add_system(self._build_system(), pinned=True, tag="system")
         self.context.add_user(user_message, tag="history")
 
         client = OpenAI(api_key=OPENAI_API_KEY)
-        tools_param = self._openai_tools()
 
         for iteration in range(self.max_iterations):
             messages = self.context.to_messages()
-            log.debug("[%s] Iteration %d, context entries: %d",
-                      self.name, iteration + 1, len(self.context))
+            tools_param = self._openai_tools()  # Rebuilt each iteration (skills may unlock new tools)
+            log.debug("[%s] Iteration %d, context entries: %d, tools: %d",
+                      self.name, iteration + 1, len(self.context), len(tools_param))
             log.debug("[%s] Full context:\n%s",
                       self.name, json.dumps(messages, indent=2, ensure_ascii=False))
 
@@ -316,13 +328,10 @@ class Agent:
 
 
 # ---------------------------------------------------------------------------
-# Loading from markdown (Claude Code frontmatter format)
+# Loading from markdown
 # ---------------------------------------------------------------------------
 
-def load_agent_from_markdown(
-    path: Path,
-    skills_dir: Path | None = None,
-) -> Agent:
+def _load_agent_from_markdown(path: Path) -> Agent:
     text = path.read_text()
     meta, body = _parse_frontmatter(text)
 
@@ -330,15 +339,11 @@ def load_agent_from_markdown(
     description = meta.get("description", "")
     model = meta.get("model", "gpt-4o")
 
+    # Load referenced skills from root skills/ dir
     skill_names = [s.strip() for s in meta.get("skills", "").split(",") if s.strip()]
+    agent_skills = load_skills(skill_names) if skill_names else {}
 
-    all_skills = load_skills(skills_dir) if skills_dir else {}
-    agent_skills = {s: all_skills[s] for s in skill_names if s in all_skills}
-
-    log.debug("Loaded agent '%s' (model=%s, skills=%s) from %s",
-              name, model, skill_names or "none", path)
-
-    return Agent(
+    agent = Agent(
         name=name,
         description=description,
         system_prompt=body.strip(),
@@ -346,30 +351,42 @@ def load_agent_from_markdown(
         skills=agent_skills,
     )
 
+    # Tools are NOT auto-registered — agent must use_skill first (lazy loading)
 
-COMMON_AGENTS_DIR = Path(__file__).parent.parent / "agents"
+    log.debug("Loaded agent '%s' (model=%s, skills=%s) from %s",
+              name, model, skill_names or "none", path)
 
-
-def load_common_agents() -> dict[str, Agent]:
-    """Load agents from the top-level agents/ directory (shared across tasks)."""
-    if not COMMON_AGENTS_DIR.exists():
-        return {}
-    return {
-        p.stem: load_agent_from_markdown(p)
-        for p in sorted(COMMON_AGENTS_DIR.glob("*.md"))
-    }
+    return agent
 
 
-def load_agents(task_dir: Path) -> dict[str, Agent]:
-    """Load task-specific + common agents, wire them into a shared registry."""
-    agents_dir = task_dir / "agents"
-    skills_dir = task_dir / "skills"
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
-    agents = load_common_agents()
+def get_agent(name: str) -> Agent:
+    """Load a single agent by name from the root agents/ directory."""
+    path = AGENTS_DIR / f"{name}.md"
+    if not path.exists():
+        raise ValueError(f"Agent '{name}' not found at {path}")
+    return _load_agent_from_markdown(path)
 
-    if agents_dir.exists():
-        for p in sorted(agents_dir.glob("*.md")):
-            agents[p.stem] = load_agent_from_markdown(p, skills_dir)
+
+def load_agents(*names: str) -> dict[str, Agent]:
+    """
+    Load specific agents by name and wire them into a shared registry.
+    If no names given, load all agents from agents/ directory.
+    """
+    if names:
+        agents = {}
+        for name in names:
+            agents[name] = get_agent(name)
+    else:
+        if not AGENTS_DIR.exists():
+            return {}
+        agents = {
+            p.stem: _load_agent_from_markdown(p)
+            for p in sorted(AGENTS_DIR.glob("*.md"))
+        }
 
     # Wire all agents into a shared registry
     registry = AgentRegistry()

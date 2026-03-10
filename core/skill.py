@@ -1,8 +1,18 @@
 from __future__ import annotations
 
+import importlib.util
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
+
+from core.log import get_logger
+
+log = get_logger("skill")
+
+PROJECT_ROOT = Path(__file__).parent.parent
+SKILLS_DIR = PROJECT_ROOT / "skills"
+TOOLS_DIR = PROJECT_ROOT / "tools"
 
 
 def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
@@ -20,12 +30,34 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, str], str]:
     return meta, m.group(2)
 
 
+def _load_tools_from_py(py_path: Path, tool_names: list[str]) -> dict[str, Callable]:
+    """Import a Python file and extract named functions as tools."""
+    if not py_path.exists():
+        return {}
+
+    spec = importlib.util.spec_from_file_location(py_path.stem, py_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    tools: dict[str, Callable] = {}
+    for name in tool_names:
+        fn = getattr(module, name, None)
+        if fn is not None and callable(fn):
+            tools[name] = fn
+            log.debug("Loaded tool '%s' from %s", name, py_path)
+        else:
+            log.warning("Tool '%s' not found in %s", name, py_path)
+
+    return tools
+
+
 @dataclass
 class Skill:
     name: str
     description: str
     body: str
-    tools: list[str] = field(default_factory=list)
+    tool_names: list[str] = field(default_factory=list)
+    tool_fns: dict[str, Callable] = field(default_factory=dict)
 
     @classmethod
     def from_markdown(cls, path: Path) -> "Skill":
@@ -34,20 +66,39 @@ class Skill:
 
         name = meta.get("name", path.stem)
         description = meta.get("description", "")
-        tools = [t.strip() for t in meta.get("tools", "").split(",") if t.strip()]
+        tool_names = [t.strip() for t in meta.get("tools", "").split(",") if t.strip()]
+
+        # Load tools from tools/<skill_name>_tools.py
+        tools_py = TOOLS_DIR / f"{path.stem}_tools.py"
+        tool_fns = _load_tools_from_py(tools_py, tool_names) if tool_names else {}
+
+        log.debug("Loaded skill '%s' (tools=%s) from %s", name, tool_names or "none", path)
 
         return cls(
             name=name,
             description=description,
             body=body.strip(),
-            tools=tools,
+            tool_names=tool_names,
+            tool_fns=tool_fns,
         )
 
 
-def load_skills(skills_dir: Path) -> dict[str, Skill]:
-    if not skills_dir.exists():
+def load_skills(skill_names: list[str] | None = None) -> dict[str, Skill]:
+    """Load skills from the root skills/ directory. If skill_names given, load only those."""
+    if not SKILLS_DIR.exists():
         return {}
+
+    if skill_names is not None:
+        result = {}
+        for name in skill_names:
+            path = SKILLS_DIR / f"{name}.md"
+            if path.exists():
+                result[name] = Skill.from_markdown(path)
+            else:
+                log.warning("Skill '%s' not found at %s", name, path)
+        return result
+
     return {
         p.stem: Skill.from_markdown(p)
-        for p in sorted(skills_dir.glob("*.md"))
+        for p in sorted(SKILLS_DIR.glob("*.md"))
     }
