@@ -3,8 +3,7 @@ import io
 import json
 from datetime import datetime
 
-import requests
-
+from core import http
 from core.config import API_KEY
 from core.log import get_logger
 from core.store import store_put
@@ -15,10 +14,10 @@ BASE_URL = f"https://hub.ag3nts.org/data/{API_KEY}"
 CURRENT_YEAR = datetime.now().year
 
 
-def download_and_filter(dataset: str, filters_json: str) -> str:
-    """Download a CSV dataset and filter rows. dataset is the CSV name (e.g. 'people'). filters_json is a JSON object with filter criteria (field matches and optional age_min/age_max)."""
+def download_and_filter(dataset: str, filters_json: str, output_key: str) -> str:
+    """Download a CSV dataset and filter rows. Stores result under output_key."""
     url = f"{BASE_URL}/{dataset}.csv"
-    resp = requests.get(url)
+    resp = http.get(url)
     resp.raise_for_status()
     rows = list(csv.DictReader(io.StringIO(resp.text)))
     log.info("Downloaded %d rows from %s", len(rows), dataset)
@@ -29,10 +28,8 @@ def download_and_filter(dataset: str, filters_json: str) -> str:
 
     candidates = []
     for row in rows:
-        # Exact field matches
         if not all(row.get(k, "").strip() == v for k, v in filters.items()):
             continue
-        # Age range filter
         if age_min is not None or age_max is not None:
             try:
                 birth_year = int(row["birthDate"].split("-")[0])
@@ -46,7 +43,7 @@ def download_and_filter(dataset: str, filters_json: str) -> str:
         candidates.append(row)
 
     log.info("Filtered to %d candidates", len(candidates))
-    store_put("candidates", json.dumps(candidates, ensure_ascii=False))
+    store_put(output_key, json.dumps(candidates, ensure_ascii=False))
 
     names = [f"{c.get('name', '')} {c.get('surname', '')}".strip() for c in candidates]
-    return f"Filtered {len(candidates)} candidates: {', '.join(names)}"
+    return f"Filtered {len(candidates)} candidates into '{output_key}': {', '.join(names)}"

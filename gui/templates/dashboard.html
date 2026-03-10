@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // Dashboard{% endblock %}
+
+{% block body %}
+<!-- Control Panel -->
+<div class="cpanel">
+    <div class="cpanel-stat">
+        <div class="cpanel-label">AGENTS</div>
+        <div class="cpanel-value">{{ agents|length }}</div>
+        <div class="cpanel-bar"><div class="cpanel-bar-fill cpanel-bar-green" style="width:{{ [agents|length * 10, 100]|min }}%"></div></div>
+    </div>
+    <div class="cpanel-stat">
+        <div class="cpanel-label">SKILLS</div>
+        <div class="cpanel-value">{{ skills|length }}</div>
+        <div class="cpanel-bar"><div class="cpanel-bar-fill cpanel-bar-cyan" style="width:{{ [skills|length * 10, 100]|min }}%"></div></div>
+    </div>
+    <div class="cpanel-stat">
+        <div class="cpanel-label">TOOLS</div>
+        <div class="cpanel-value">{{ tools|length }}<span class="cpanel-sub">/{{ total_fns }}fn</span></div>
+        <div class="cpanel-bar"><div class="cpanel-bar-fill cpanel-bar-yellow" style="width:{{ [total_fns * 3, 100]|min }}%"></div></div>
+    </div>
+    <div class="cpanel-stat">
+        <div class="cpanel-label">TASKS</div>
+        <div class="cpanel-value">{{ tasks|length }}</div>
+        <div class="cpanel-bar"><div class="cpanel-bar-fill cpanel-bar-green" style="width:{{ [tasks|length * 5, 100]|min }}%"></div></div>
+    </div>
+    <div class="cpanel-stat cpanel-stat-main">
+        <div class="cpanel-label">SOLVED</div>
+        <div class="cpanel-value cpanel-solved">{{ solved|length }}<span class="cpanel-sub">/{{ tasks|length }}</span></div>
+        <div class="cpanel-ring">
+            <svg viewBox="0 0 36 36">
+                <path class="cpanel-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path class="cpanel-ring-fill" stroke-dasharray="{{ (solved|length / [tasks|length, 1]|max * 100)|round }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard">
+    <!-- Agents -->
+    <div class="section">
+        <div class="section-header">
+            Agents <span class="count">{{ agents|length }}</span>
+            <a href="/new/agent" class="btn-new">+ new</a>
+        </div>
+        <ul class="item-list">
+        {% for a in agents %}
+            <li class="item">
+                <a href="/edit/{{ a.path }}" class="item-name">{{ a.name }}</a>
+                <span class="item-desc">{{ a.description }}</span>
+                <div class="item-meta">
+                    {% if a.model %}<span class="tag tag-model">{{ a.model }}</span>{% endif %}
+                    {% for s in a.skills.split(',') if s.strip() %}
+                        <span class="tag tag-skill">{{ s.strip() }}</span>
+                    {% endfor %}
+                </div>
+                <div class="item-actions">
+                    <button class="btn-icon danger" onclick="deleteItem('{{ a.path }}', '{{ a.name }}')">del</button>
+                </div>
+            </li>
+        {% else %}
+            <li class="empty">no agents found</li>
+        {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Skills -->
+    <div class="section">
+        <div class="section-header">
+            Skills <span class="count">{{ skills|length }}</span>
+            <a href="/new/skill" class="btn-new">+ new</a>
+        </div>
+        <ul class="item-list">
+        {% for s in skills %}
+            <li class="item">
+                <a href="/edit/{{ s.path }}" class="item-name">{{ s.name }}</a>
+                <span class="item-desc">{{ s.description }}</span>
+                <div class="item-meta">
+                    {% for t in s.tools.split(',') if t.strip() %}
+                        <span class="tag">{{ t.strip() }}</span>
+                    {% endfor %}
+                </div>
+                <div class="item-actions">
+                    <button class="btn-icon danger" onclick="deleteItem('{{ s.path }}', '{{ s.name }}')">del</button>
+                </div>
+            </li>
+        {% else %}
+            <li class="empty">no skills found</li>
+        {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Tasks -->
+    <div class="section">
+        <div class="section-header">
+            Tasks <span class="count">{{ tasks|length }}</span>
+            <a href="/new/task" class="btn-new">+ new</a>
+        </div>
+        <ul class="item-list">
+        {% for t in tasks %}
+            <li class="item">
+                <a href="/edit/{{ t.path }}" class="item-name">{{ t.name }}</a>
+                <span class="item-desc">{{ t.path }}</span>
+                <div class="item-actions">
+                    {% if t.name in logs %}
+                        <a href="/log/{{ t.name }}" class="btn-icon btn-log">log</a>
+                    {% endif %}
+                    {% if t.name in results %}
+                        <a href="/result/{{ t.name }}" class="btn-icon btn-result">result</a>
+                    {% endif %}
+                    <a href="/run/{{ t.name }}" class="btn-icon btn-run">run</a>
+                </div>
+            </li>
+        {% else %}
+            <li class="empty">no tasks found</li>
+        {% endfor %}
+        </ul>
+    </div>
+
+    <!-- Tools -->
+    <div class="section">
+        <div class="section-header">
+            Tools <span class="count">{{ tools|length }}</span>
+        </div>
+        <ul class="item-list">
+        {% for t in tools %}
+            <li class="item">
+                <a href="/edit/{{ t.path }}" class="item-name">{{ t.skill }}</a>
+                <div class="item-meta">
+                    {% for fn in t.functions %}
+                        <span class="tag">{{ fn }}</span>
+                    {% endfor %}
+                </div>
+            </li>
+        {% else %}
+            <li class="empty">no tools found</li>
+        {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div id="deleteModal" class="modal-overlay" style="display:none">
+    <div class="modal">
+        <h3>Confirm delete</h3>
+        <p>Delete <span id="deleteTargetName" style="color:var(--red)"></span>?</p>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:4px" id="deleteTargetPath"></p>
+        <div class="form-actions" style="margin-top:20px">
+            <button class="btn-create" style="border-color:var(--red);color:var(--red)" onclick="confirmDelete()">delete</button>
+            <button class="btn-cancel" onclick="closeDeleteModal()">cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let pendingDeletePath = null;
+
+function deleteItem(filepath, name) {
+    pendingDeletePath = filepath;
+    document.getElementById('deleteTargetName').textContent = name;
+    document.getElementById('deleteTargetPath').textContent = filepath;
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+    pendingDeletePath = null;
+}
+
+async function confirmDelete() {
+    if (!pendingDeletePath) return;
+    const r = await fetch('/api/delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({filepath: pendingDeletePath})
+    });
+    closeDeleteModal();
+    if (r.ok) location.reload();
+    else alert('Error: ' + (await r.json()).error);
+}
+
+document.getElementById('deleteModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeDeleteModal();
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeDeleteModal();
+});
+</script>
+{% endblock %}

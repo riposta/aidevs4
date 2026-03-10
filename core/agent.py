@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from core.config import OPENAI_API_KEY
 from core.context import Context, MessageRole
+from core import event_log
 from core.log import get_logger
 from core.skill import Skill, load_skills, _parse_frontmatter
 from core.store import store_clear
@@ -83,14 +84,14 @@ class AgentRegistry:
         return {a.name: a.description for a in self._agents.values()}
 
     def call(self, agent_name: str, message: str) -> str:
-        """Call another agent by name. Returns its text response."""
+        """Call another agent by name. Returns its text response. Preserves store."""
         agent = self._agents.get(agent_name)
         if agent is None:
             log.error("Agent '%s' not found. Available: %s", agent_name, self.names())
             return f"Error: agent '{agent_name}' not found. Available: {self.names()}"
         msg_preview = message[:80] + "..." if len(message) > 80 else message
         log.info("Delegating to '%s': %s", agent_name, msg_preview)
-        result = agent.run(message)
+        result = agent.run(message, clear_store=False)
         log.info("'%s' returned: %s", agent_name, str(result)[:120])
         return str(result)
 
@@ -237,6 +238,7 @@ class Agent:
         self,
         user_message: str,
         output_type: type[BaseModel] | None = None,
+        clear_store: bool = True,
         **chat_kwargs,
     ) -> str | BaseModel:
         """
@@ -252,18 +254,38 @@ class Agent:
         # Reset context and data store for fresh run
         task_data = [e for e in self.context.entries if e.tag == "task_data" and e.pinned]
         self.context.entries = task_data
-        store_clear()
+        if clear_store:
+            store_clear()
 
-        self.context.add_system(self._build_system(), pinned=True, tag="system")
+        system_prompt = self._build_system()
+        self.context.add_system(system_prompt, pinned=True, tag="system")
         self.context.add_user(user_message, tag="history")
 
+        event_log.emit("system", self.name, content=system_prompt)
+        event_log.emit("user", self.name, content=user_message)
+
         client = OpenAI(api_key=OPENAI_API_KEY)
+        prev_msg_count = 0
 
         for iteration in range(self.max_iterations):
             messages = self.context.to_messages()
             tools_param = self._openai_tools()  # Rebuilt each iteration (skills may unlock new tools)
-            log.debug("[%s] Iteration %d, context entries: %d, tools: %d",
-                      self.name, iteration + 1, len(self.context), len(tools_param))
+            log.info("[%s] Iteration %d, context entries: %d, tools: %d",
+                     self.name, iteration + 1, len(self.context), len(tools_param))
+            # Content-only summary for INFO
+            for msg in messages[prev_msg_count:]:
+                role = msg.get("role", "?")
+                content = msg.get("content")
+                if content:
+                    log.info("[%s] [%s] %s", self.name, role, content[:300])
+                tool_calls = msg.get("tool_calls")
+                if tool_calls:
+                    for tc in tool_calls:
+                        fn = tc.get("function", {})
+                        log.info("[%s] [%s] → %s(%s)", self.name, role,
+                                 fn.get("name", "?"), fn.get("arguments", "")[:200])
+            prev_msg_count = len(messages)
+            # Full JSON only on DEBUG
             log.debug("[%s] Full context:\n%s",
                       self.name, json.dumps(messages, indent=2, ensure_ascii=False))
 
@@ -284,6 +306,10 @@ class Agent:
 
             # --- tool calls -> execute and loop ---
             if choice.finish_reason == "tool_calls" or choice.message.tool_calls:
+                # Log reasoning if model included text alongside tool calls
+                if choice.message.content:
+                    log.info("[%s] Reasoning: %s", self.name, choice.message.content[:300])
+                    event_log.emit("reasoning", self.name, content=choice.message.content)
                 self.context.add_raw(choice.message.model_dump(), tag="history")
 
                 for tool_call in choice.message.tool_calls:
@@ -291,8 +317,11 @@ class Agent:
                     fn_args = json.loads(tool_call.function.arguments)
                     log.info("[%s] Tool call: %s(%s)", self.name, fn_name,
                              json.dumps(fn_args, ensure_ascii=False)[:200])
+                    event_log.emit("tool_call", self.name, name=fn_name, args=fn_args)
 
                     result = self._execute_tool_call(fn_name, fn_args)
+                    log.info("[%s] %s → %s", self.name, fn_name, str(result)[:200])
+                    event_log.emit("tool_result", self.name, name=fn_name, content=str(result))
 
                     self.context.add(
                         MessageRole.TOOL,
@@ -306,13 +335,15 @@ class Agent:
             content = choice.message.content or ""
             self.context.add_assistant(content, tag="history")
             log.info("[%s] Finished after %d iteration(s)", self.name, iteration + 1)
-            log.debug("[%s] Response: %s", self.name, content[:300])
+            log.info("[%s] Response: %s", self.name, content[:300])
+            event_log.emit("response", self.name, content=content)
 
             if output_type is not None:
                 return output_type.model_validate_json(content)
             return content
 
         log.error("[%s] Exceeded %d iterations", self.name, self.max_iterations)
+        event_log.emit("error", self.name, content=f"Exceeded {self.max_iterations} iterations")
         raise RuntimeError(f"Agent '{self.name}' exceeded {self.max_iterations} iterations")
 
     def run_with_context(

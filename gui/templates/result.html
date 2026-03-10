@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // result {{ task_name }}{% endblock %}
+
+{% block body %}
+<div class="result-wrap">
+    <div class="result-toolbar">
+        <div class="result-title">
+            <a href="/">&lt; back</a> &nbsp;
+            result: <span>{{ task_name }}</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+            <span class="result-time">{{ data.timestamp[:19] }}Z</span>
+            <button class="btn-icon" onclick="copyAnswer()">copy answer</button>
+            <button class="btn-icon" onclick="copyPrompt()">copy prompt</button>
+            <a href="/run/{{ task_name }}" class="btn-start">run</a>
+        </div>
+    </div>
+    <div class="result-content">
+        <div class="result-section">
+            <div class="result-label">response</div>
+            <pre class="result-json" id="responseJson">{{ data.response | tojson(indent=2) }}</pre>
+        </div>
+        <div class="result-section">
+            <div class="result-label">answer sent</div>
+            <pre class="result-json" id="answerJson">{{ data.answer | tojson(indent=2) }}</pre>
+        </div>
+        <div class="result-section">
+            <div class="result-label">agent prompt (paste to reuse this result)</div>
+            <pre class="result-prompt" id="promptText">Use the following data from task "{{ task_name }}" result:
+
+{{ data.answer | tojson(indent=2) }}</pre>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyAnswer() {
+    navigator.clipboard.writeText(document.getElementById('answerJson').textContent);
+}
+function copyPrompt() {
+    navigator.clipboard.writeText(document.getElementById('promptText').textContent);
+}
+</script>
+{% endblock %}

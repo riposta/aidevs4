@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // log {{ task_name }}{% endblock %}
+
+{% block body %}
+<div class="runner-wrap">
+    <div class="runner-toolbar">
+        <div class="runner-title">
+            <a href="/">&lt; back</a> &nbsp;
+            log: <span>{{ task_name }}</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+            <a href="/run/{{ task_name }}" class="btn-start">run</a>
+        </div>
+    </div>
+    <div id="terminal" class="terminal"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const raw = {{ content|tojson }};
+
+function classifyLine(text) {
+    const clean = text.replace(/\x1b\[[0-9;]*m/g, '');
+    if (clean.includes('ERROR') || clean.includes('Error:') || clean.includes('Traceback'))
+        return 'line-error';
+    if (clean.includes('WARNING') || clean.includes('Rate limited'))
+        return 'line-warn';
+    if (clean.includes('Tool call:') || clean.includes('Activated skill') || clean.includes('MATCH'))
+        return 'line-tool';
+    if (clean.includes('Full context:') || clean.includes('"role"'))
+        return 'line-dim';
+    if (clean.includes('INFO'))
+        return 'line-info';
+    return '';
+}
+
+function stripAnsi(text) {
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+const term = document.getElementById('terminal');
+for (const line of raw.split('\n')) {
+    const div = document.createElement('div');
+    const clean = stripAnsi(line);
+    div.className = classifyLine(line);
+    div.textContent = clean;
+    term.appendChild(div);
+}
+</script>
+{% endblock %}

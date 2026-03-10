@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // {{ filepath }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/theme/monokai.min.css">
+<style>
+    .cm-s-hacker.CodeMirror { background: #0a0a0a; color: #b0ffb0; }
+    .cm-s-hacker .CodeMirror-gutters { background: #0f0f0f; border-right: 1px solid #1a3a1a; }
+    .cm-s-hacker .CodeMirror-linenumber { color: #2a5a2a; }
+    .cm-s-hacker .CodeMirror-cursor { border-left: 2px solid #00ff41; }
+    .cm-s-hacker .CodeMirror-selected { background: rgba(0, 255, 65, 0.1); }
+    .cm-s-hacker .CodeMirror-activeline-background { background: rgba(0, 255, 65, 0.03); }
+    .cm-s-hacker .cm-keyword { color: #00e5ff; }
+    .cm-s-hacker .cm-def { color: #00ff41; }
+    .cm-s-hacker .cm-variable { color: #b0ffb0; }
+    .cm-s-hacker .cm-variable-2 { color: #80ffb0; }
+    .cm-s-hacker .cm-string { color: #ccff00; }
+    .cm-s-hacker .cm-string-2 { color: #ccff00; }
+    .cm-s-hacker .cm-number { color: #ff9900; }
+    .cm-s-hacker .cm-comment { color: #3a6a3a; font-style: italic; }
+    .cm-s-hacker .cm-property { color: #80ffb0; }
+    .cm-s-hacker .cm-operator { color: #00e5ff; }
+    .cm-s-hacker .cm-meta { color: #5a8a5a; }
+    .cm-s-hacker .cm-builtin { color: #00cc99; }
+    .cm-s-hacker .cm-header { color: #00ff41; font-weight: bold; }
+    .cm-s-hacker .cm-link { color: #00e5ff; }
+    .cm-s-hacker .cm-atom { color: #ff9900; }
+    .cm-s-hacker .CodeMirror-matchingbracket { color: #00ff41 !important; text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="editor-wrap">
+    <div class="editor-toolbar">
+        <div class="editor-path">
+            <a href="/">&lt; back</a> &nbsp;
+            <span>{{ filepath }}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+            <span id="status" style="font-size:11px;color:var(--text-dim)"></span>
+            <button id="saveBtn" class="btn-save" onclick="save()">save [Ctrl+S]</button>
+            {% if task_name %}
+                {% if has_log %}
+                    <a href="/log/{{ task_name }}" class="btn-icon btn-log">log</a>
+                {% endif %}
+                <a href="/run/{{ task_name }}" class="btn-start">run</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="editor-container">
+        <textarea id="code">{{ content }}</textarea>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/mode/yaml/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.18/addon/selection/active-line.min.js"></script>
+<script>
+const filepath = {{ filepath|tojson }};
+const lang = {{ lang|tojson }};
+
+const editor = CodeMirror.fromTextArea(document.getElementById('code'), {
+    mode: lang === 'python' ? 'python' : 'markdown',
+    theme: 'hacker',
+    lineNumbers: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    styleActiveLine: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    extraKeys: {
+        'Ctrl-S': () => save(),
+        'Cmd-S': () => save(),
+        Tab: (cm) => cm.replaceSelection('    ', 'end'),
+    }
+});
+
+let dirty = false;
+editor.on('change', () => {
+    dirty = true;
+    document.getElementById('saveBtn').classList.remove('saved');
+    document.getElementById('status').textContent = 'unsaved';
+    document.getElementById('status').style.color = 'var(--yellow)';
+});
+
+async function save() {
+    const content = editor.getValue();
+    const r = await fetch('/api/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({filepath, content})
+    });
+    if (r.ok) {
+        dirty = false;
+        document.getElementById('saveBtn').classList.add('saved');
+        document.getElementById('status').textContent = 'saved';
+        document.getElementById('status').style.color = 'var(--green)';
+        setTimeout(() => {
+            if (!dirty) document.getElementById('status').textContent = '';
+        }, 2000);
+    } else {
+        const data = await r.json();
+        document.getElementById('status').textContent = 'error: ' + data.error;
+        document.getElementById('status').style.color = 'var(--red)';
+    }
+}
+
+window.addEventListener('beforeunload', (e) => {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+});
+</script>
+{% endblock %}

@@ -8,4 +8,5 @@ Use `download_and_filter` to fetch and filter the CSV dataset.
 
 Parameters for this task:
 - dataset: "people"
-- filters: {"gender": "M", "birthPlace": "Grudziądz", "age_min": 20, "age_max": 40}
+- filters_json: {"gender": "M", "birthPlace": "Grudziądz", "age_min": 20, "age_max": 40}
+- output_key: "candidates"

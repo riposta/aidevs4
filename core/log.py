@@ -32,12 +32,23 @@ class ColorFormatter(logging.Formatter):
         return f"{GREY}{record.name}{RESET} {prefix}{color}{msg}{RESET}"
 
 
+_global_level = logging.DEBUG
+
+
+def set_global_level(level: int) -> None:
+    global _global_level
+    _global_level = level
+    for name in logging.Logger.manager.loggerDict:
+        if name.startswith("aidevs."):
+            logging.getLogger(name).setLevel(level)
+
+
 def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(f"aidevs.{name}")
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stderr)
         handler.setFormatter(ColorFormatter())
         logger.addHandler(handler)
-        logger.setLevel(logging.DEBUG)
+        logger.setLevel(_global_level)
         logger.propagate = False
     return logger

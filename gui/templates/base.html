@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AIDevs4{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div class="header">
+        <a href="/"><h1 class="glitch" data-text="> AIDEVS4 CONSOLE_">&gt; AIDEVS<span>4</span> CONSOLE_</h1></a>
+        <nav class="header-nav">
+            <a href="/">dashboard</a>
+            <a href="/new/agent">+ agent</a>
+            <a href="/new/skill">+ skill</a>
+            <a href="/new/task">+ task</a>
+        </nav>
+    </div>
+    {% block body %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

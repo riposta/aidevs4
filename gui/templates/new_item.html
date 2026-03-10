@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // new {{ item_type }}{% endblock %}
+
+{% block body %}
+<div class="new-item-wrap">
+    <form class="new-item-form" onsubmit="return createItem(event)">
+        <h2>new {{ item_type }}</h2>
+        <div class="form-field">
+            <label for="name">name</label>
+            <input type="text" id="name" name="name" placeholder="{{ item_type }}_name" autofocus
+                   pattern="[a-z0-9_]+" title="lowercase, numbers, underscores only">
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn-create">create</button>
+            <a href="/" class="btn-cancel">cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const itemType = {{ item_type|tojson }};
+
+async function createItem(e) {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    if (!name) return false;
+
+    const r = await fetch('/api/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({type: itemType, name})
+    });
+    const data = await r.json();
+    if (data.redirect) {
+        window.location.href = data.redirect;
+    } else if (data.error) {
+        alert(data.error);
+    }
+    return false;
+}
+</script>
+{% endblock %}

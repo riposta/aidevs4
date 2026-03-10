@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // run {{ task_name }}{% endblock %}
+
+{% block body %}
+<div class="runner-wrap">
+    <div class="runner-toolbar">
+        <div class="runner-title">
+            <a href="/">&lt; back</a> &nbsp;
+            run: <span>{{ task_name }}</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+            <label class="toggle-label">
+                <input type="checkbox" id="verboseToggle">
+                <span class="toggle-text">verbose</span>
+            </label>
+            <label class="toggle-label">
+                <input type="checkbox" id="rawToggle">
+                <span class="toggle-text">raw</span>
+            </label>
+            <button id="startBtn" class="btn-start" onclick="toggleRun()">run</button>
+        </div>
+    </div>
+    <div class="bubble-timeline" id="bubbles"></div>
+    <div id="terminal" class="terminal" style="display:none"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const taskName = {{ task_name|tojson }};
+let eventSource = null;
+let running = false;
+
+document.getElementById('rawToggle').addEventListener('change', (e) => {
+    document.getElementById('bubbles').style.display = e.target.checked ? 'none' : 'flex';
+    document.getElementById('terminal').style.display = e.target.checked ? 'block' : 'none';
+});
+
+function stripAnsi(text) {
+    return text.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+function classifyLine(text) {
+    const clean = stripAnsi(text);
+    if (clean.includes('ERROR') || clean.includes('Error:') || clean.includes('Traceback'))
+        return 'line-error';
+    if (clean.includes('WARNING') || clean.includes('Rate limited'))
+        return 'line-warn';
+    if (clean.includes('Tool call:') || clean.includes('Activated skill') || clean.includes('MATCH'))
+        return 'line-tool';
+    if (clean.includes('Full context:') || clean.includes('"role"'))
+        return 'line-dim';
+    if (clean.includes('INFO'))
+        return 'line-info';
+    return '';
+}
+
+function appendRawLine(text) {
+    const term = document.getElementById('terminal');
+    const line = document.createElement('div');
+    const clean = stripAnsi(text);
+    line.className = classifyLine(text);
+    line.textContent = clean;
+    term.appendChild(line);
+    autoScroll(term);
+}
+
+function autoScroll(el) {
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (atBottom) el.scrollTop = el.scrollHeight;
+}
+
+function escHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+function addBubble(ev) {
+    const container = document.getElementById('bubbles');
+    const div = document.createElement('div');
+    const ts = ev.ts ? ev.ts.substring(11, 19) : '';
+
+    if (ev.type === 'system') {
+        div.className = 'bubble bubble-system';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-system">SYS</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'user') {
+        div.className = 'bubble bubble-user';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-user">USER</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'reasoning') {
+        div.className = 'bubble bubble-reasoning';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-reasoning">THINK</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'tool_call') {
+        div.className = 'bubble bubble-toolcall';
+        const argsStr = JSON.stringify(ev.args || {});
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-tool">&rarr; TOOL</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body"><span class="tool-name">${escHtml(ev.name)}</span><span class="tool-args">(${escHtml(argsStr)})</span></div>`;
+    } else if (ev.type === 'tool_result') {
+        div.className = 'bubble bubble-toolresult';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-result">&larr; RESULT</span>
+                <span class="bubble-tool-name">${escHtml(ev.name)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'response') {
+        div.className = 'bubble bubble-response';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-response">RESPONSE</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'error') {
+        div.className = 'bubble bubble-error';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-error">ERROR</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else {
+        return;
+    }
+
+    container.appendChild(div);
+    autoScroll(container);
+}
+
+function toggleRun() {
+    if (running) { stopRun(); } else { startRun(); }
+}
+
+function stopRun() {
+    fetch(`/api/stop/${taskName}`, {method: 'POST'});
+    if (eventSource) eventSource.close();
+    running = false;
+    const btn = document.getElementById('startBtn');
+    btn.textContent = 'run';
+    btn.classList.remove('running');
+    addBubble({type: 'error', agent: '', content: '--- stopped ---', ts: new Date().toISOString()});
+    appendRawLine('--- stopped ---');
+}
+
+function startRun() {
+    if (eventSource) { eventSource.close(); eventSource = null; }
+    running = true;
+    const btn = document.getElementById('startBtn');
+    btn.textContent = 'stop';
+    btn.classList.add('running');
+    document.getElementById('bubbles').innerHTML = '';
+    document.getElementById('terminal').innerHTML = '';
+
+    const verbose = document.getElementById('verboseToggle').checked;
+    const flag = verbose ? ' -v' : '';
+    appendRawLine(`> python run.py ${taskName}${flag}`);
+    appendRawLine('');
+
+    eventSource = new EventSource(`/api/run/${taskName}?verbose=${verbose}`);
+
+    eventSource.onmessage = (e) => {
+        const text = JSON.parse(e.data);
+        appendRawLine(text);
+    };
+
+    eventSource.addEventListener('bubble', (e) => {
+        const ev = JSON.parse(e.data);
+        addBubble(ev);
+    });
+
+    eventSource.addEventListener('done', () => {
+        eventSource.close();
+        running = false;
+        btn.textContent = 'run';
+        btn.classList.remove('running');
+        appendRawLine('');
+        appendRawLine('--- done ---');
+    });
+
+    eventSource.onerror = () => {
+        eventSource.close();
+        running = false;
+        btn.textContent = 'run';
+        btn.classList.remove('running');
+        appendRawLine('[connection lost]');
+    };
+}
+</script>
+{% endblock %}

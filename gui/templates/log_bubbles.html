@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // log {{ task_name }}{% endblock %}
+
+{% block body %}
+<div class="runner-wrap">
+    <div class="runner-toolbar">
+        <div class="runner-title">
+            <a href="/">&lt; back</a> &nbsp;
+            log: <span>{{ task_name }}</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+            <a href="/run/{{ task_name }}" class="btn-start">run</a>
+        </div>
+    </div>
+    <div class="bubble-timeline">
+        {% for ev in events %}
+        {% if ev.type == "system" %}
+        <div class="bubble bubble-system">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-system">SYS</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+
+        {% elif ev.type == "user" %}
+        <div class="bubble bubble-user">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-user">USER</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+
+        {% elif ev.type == "reasoning" %}
+        <div class="bubble bubble-reasoning">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-reasoning">THINK</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+
+        {% elif ev.type == "tool_call" %}
+        <div class="bubble bubble-toolcall">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-tool">&rarr; TOOL</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body"><span class="tool-name">{{ ev.name }}</span><span class="tool-args">({{ ev.args | tojson }})</span></div>
+        </div>
+
+        {% elif ev.type == "tool_result" %}
+        <div class="bubble bubble-toolresult">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-result">&larr; RESULT</span>
+                <span class="bubble-tool-name">{{ ev.name }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+
+        {% elif ev.type == "response" %}
+        <div class="bubble bubble-response">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-response">RESPONSE</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+
+        {% elif ev.type == "error" %}
+        <div class="bubble bubble-error">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-error">ERROR</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
