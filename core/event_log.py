@@ -1,4 +1,5 @@
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -6,6 +7,8 @@ LOG_DIR = Path(__file__).parent.parent / "log"
 
 _file = None
 _task_name = None
+
+EVENT_PREFIX = "@@EVENT::"
 
 
 def init(task_name: str) -> None:
@@ -17,16 +20,19 @@ def init(task_name: str) -> None:
 
 
 def emit(event_type: str, agent: str = "", **kwargs) -> None:
-    if _file is None:
-        return
     entry = {
         "type": event_type,
         "agent": agent,
         "ts": datetime.now(timezone.utc).isoformat(),
         **kwargs,
     }
-    _file.write(json.dumps(entry, ensure_ascii=False) + "\n")
-    _file.flush()
+    line = json.dumps(entry, ensure_ascii=False)
+    # Write to JSONL file
+    if _file is not None:
+        _file.write(line + "\n")
+        _file.flush()
+    # Write to stderr (captured by GUI SSE endpoint)
+    print(f"{EVENT_PREFIX}{line}", file=sys.stderr, flush=True)
 
 
 def close() -> None:

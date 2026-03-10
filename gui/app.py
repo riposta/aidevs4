@@ -1,9 +1,7 @@
 import json
 import os
-import queue
 import re
 import subprocess
-import threading
 from pathlib import Path
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, Response
@@ -309,53 +307,26 @@ def run_task_stream(task_name):
         _running_procs[task_name] = proc
         LOGS_DIR.mkdir(exist_ok=True)
         log_path = LOGS_DIR / f"{task_name}.log"
-        jsonl_path = LOGS_DIR / f"{task_name}.jsonl"
-
-        # Tail JSONL in background thread
-        event_queue = queue.Queue()
-        stop_tail = threading.Event()
-
-        def tail_jsonl():
-            pos = 0
-            while not stop_tail.is_set():
-                if jsonl_path.exists():
-                    with open(jsonl_path, "r") as f:
-                        f.seek(pos)
-                        for line in f:
-                            line = line.strip()
-                            if line:
-                                try:
-                                    event_queue.put(json.loads(line))
-                                except json.JSONDecodeError:
-                                    pass
-                        pos = f.tell()
-                stop_tail.wait(0.1)
-
-        tail_thread = threading.Thread(target=tail_jsonl, daemon=True)
-        tail_thread.start()
+        event_prefix = "@@EVENT::"
 
         try:
             with open(log_path, "w") as log_file:
                 for line in proc.stdout:
-                    log_file.write(line)
-                    log_file.flush()
-                    yield f"data: {json.dumps(line.rstrip())}\n\n"
-                    # Flush any pending bubble events
-                    while not event_queue.empty():
-                        ev = event_queue.get_nowait()
-                        yield f"event: bubble\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
+                    stripped = line.rstrip()
+                    if stripped.startswith(event_prefix):
+                        # Structured event — send as bubble
+                        payload = stripped[len(event_prefix):]
+                        yield f"event: bubble\ndata: {payload}\n\n"
+                    else:
+                        # Raw log line
+                        log_file.write(line)
+                        log_file.flush()
+                        yield f"data: {json.dumps(stripped)}\n\n"
             proc.wait()
-            # Flush remaining events
-            stop_tail.set()
-            tail_thread.join(timeout=1)
-            while not event_queue.empty():
-                ev = event_queue.get_nowait()
-                yield f"event: bubble\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
             with open(log_path, "a") as log_file:
                 log_file.write(f"[exit code: {proc.returncode}]\n")
             yield f"data: {json.dumps(f'[exit code: {proc.returncode}]')}\n\n"
         finally:
-            stop_tail.set()
             _running_procs.pop(task_name, None)
         yield "event: done\ndata: done\n\n"
 

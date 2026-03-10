@@ -9,10 +9,14 @@
             log: <span>{{ task_name }}</span>
         </div>
         <div style="display:flex;gap:12px;align-items:center">
+            <label class="toggle-label">
+                <input type="checkbox" id="verboseToggle">
+                <span class="toggle-text">verbose</span>
+            </label>
             <a href="/run/{{ task_name }}" class="btn-start">run</a>
         </div>
     </div>
-    <div class="bubble-timeline">
+    <div class="bubble-timeline" id="bubbles">
         {% for ev in events %}
         {% if ev.type == "system" %}
         <div class="bubble bubble-system">
@@ -83,8 +87,36 @@
             </div>
             <div class="bubble-body">{{ ev.content }}</div>
         </div>
+
+        {% elif ev.type == "iteration" %}
+        <div class="bubble bubble-debug">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-iter">ITER</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
+
+        {% elif ev.type == "debug" %}
+        <div class="bubble bubble-debug">
+            <div class="bubble-header">
+                <span class="bubble-badge badge-debug">{{ ev.label|default('DEBUG')|upper }}</span>
+                <span class="bubble-agent">{{ ev.agent }}</span>
+                <span class="bubble-ts">{{ ev.ts[11:19] }}</span>
+            </div>
+            <div class="bubble-body">{{ ev.content }}</div>
+        </div>
         {% endif %}
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('verboseToggle').addEventListener('change', (e) => {
+    document.getElementById('bubbles').classList.toggle('show-debug', e.target.checked);
+});
+</script>
 {% endblock %}

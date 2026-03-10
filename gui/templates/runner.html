@@ -36,6 +36,10 @@ document.getElementById('rawToggle').addEventListener('change', (e) => {
     document.getElementById('terminal').style.display = e.target.checked ? 'block' : 'none';
 });
 
+document.getElementById('verboseToggle').addEventListener('change', (e) => {
+    document.getElementById('bubbles').classList.toggle('show-debug', e.target.checked);
+});
+
 function stripAnsi(text) {
     return text.replace(/\x1b\[[0-9;]*m/g, '');
 }
@@ -141,6 +145,25 @@ function addBubble(ev) {
         div.innerHTML = `
             <div class="bubble-header">
                 <span class="bubble-badge badge-error">ERROR</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'iteration') {
+        div.className = 'bubble bubble-debug';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-iter">ITER</span>
+                <span class="bubble-agent">${escHtml(ev.agent)}</span>
+                <span class="bubble-ts">${ts}</span>
+            </div>
+            <div class="bubble-body">${escHtml(ev.content)}</div>`;
+    } else if (ev.type === 'debug') {
+        div.className = 'bubble bubble-debug';
+        const label = ev.label || 'DEBUG';
+        div.innerHTML = `
+            <div class="bubble-header">
+                <span class="bubble-badge badge-debug">${escHtml(label.toUpperCase())}</span>
                 <span class="bubble-agent">${escHtml(ev.agent)}</span>
                 <span class="bubble-ts">${ts}</span>
             </div>

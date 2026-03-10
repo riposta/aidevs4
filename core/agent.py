@@ -272,6 +272,8 @@ class Agent:
             tools_param = self._openai_tools()  # Rebuilt each iteration (skills may unlock new tools)
             log.info("[%s] Iteration %d, context entries: %d, tools: %d",
                      self.name, iteration + 1, len(self.context), len(tools_param))
+            event_log.emit("iteration", self.name,
+                           content=f"Iteration {iteration + 1}, {len(self.context)} entries, {len(tools_param)} tools")
             # Content-only summary for INFO
             for msg in messages[prev_msg_count:]:
                 role = msg.get("role", "?")
@@ -288,6 +290,8 @@ class Agent:
             # Full JSON only on DEBUG
             log.debug("[%s] Full context:\n%s",
                       self.name, json.dumps(messages, indent=2, ensure_ascii=False))
+            event_log.emit("debug", self.name, label="context",
+                           content=json.dumps(messages, indent=2, ensure_ascii=False))
 
             kwargs: dict[str, Any] = {
                 "model": self.model,
@@ -303,6 +307,8 @@ class Agent:
             if usage:
                 log.debug("[%s] Tokens — prompt: %d, completion: %d, total: %d",
                           self.name, usage.prompt_tokens, usage.completion_tokens, usage.total_tokens)
+                event_log.emit("debug", self.name, label="tokens",
+                               content=f"prompt: {usage.prompt_tokens}, completion: {usage.completion_tokens}, total: {usage.total_tokens}")
 
             # --- tool calls -> execute and loop ---
             if choice.finish_reason == "tool_calls" or choice.message.tool_calls:

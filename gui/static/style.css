@@ -1008,6 +1008,33 @@ a:hover { color: var(--green); text-shadow: 0 0 8px var(--green); }
     color: var(--red);
 }
 
+/* Debug bubbles — hidden by default, shown with .show-debug */
+.bubble-debug {
+    display: none;
+    background: rgba(90, 138, 90, 0.04);
+    border: 1px dashed var(--border);
+    border-left: 3px dashed var(--text-dim);
+}
+
+.show-debug .bubble-debug {
+    display: block;
+}
+
+.badge-iter {
+    background: rgba(90, 138, 90, 0.15);
+    color: var(--text-dim);
+}
+
+.badge-debug {
+    background: rgba(90, 138, 90, 0.1);
+    color: var(--text-dim);
+}
+
+.bubble-debug .bubble-body {
+    color: var(--text-dim);
+    font-size: 11px;
+}
+
 /* Modal */
 .modal-overlay {
     position: fixed;
