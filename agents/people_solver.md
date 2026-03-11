@@ -1,7 +1,7 @@
 ---
 name: people_solver
 description: Downloads and filters people data, then tags and submits the answer
-model: gpt-4o
+model: gpt-5-nano
 skills: data, tagging, verify
 ---
 

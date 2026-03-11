@@ -15,6 +15,7 @@ RESULTS_DIR = PROJECT_ROOT / "results"
 LOGS_DIR = PROJECT_ROOT / "log"
 
 app = Flask(__name__)
+app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
 
 
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
