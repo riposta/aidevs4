@@ -15,9 +15,9 @@ def verify(task: str, answer) -> dict:
     log.debug("Payload: %s", payload)
 
     response = http.post(VERIFY_URL, json=payload)
-    log.debug("Response status: %d, body: %s", response.status_code, response.text[:500])
+    log.info("Response [%d]: %s", response.status_code, response.text[:500])
     response.raise_for_status()
     result = response.json()
 
-    log.info("Response: %s", result)
+    log.info("Result: %s", result)
     return result

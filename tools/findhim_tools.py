@@ -4,15 +4,15 @@ import math
 import requests
 
 from core import http
-from core.config import API_KEY
+from core.config import API_KEY, HUB_URL
 from core.log import get_logger
 from core.store import store_get, store_put
 
 log = get_logger("tools.findhim")
 
-LOCATION_URL = "https://hub.ag3nts.org/api/location"
-ACCESS_LEVEL_URL = "https://hub.ag3nts.org/api/accesslevel"
-LOCATIONS_URL = f"https://hub.ag3nts.org/data/{API_KEY}/findhim_locations.json"
+LOCATION_URL = f"{HUB_URL}/api/location"
+ACCESS_LEVEL_URL = f"{HUB_URL}/api/accesslevel"
+LOCATIONS_URL = f"{HUB_URL}/data/{API_KEY}/findhim_locations.json"
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:

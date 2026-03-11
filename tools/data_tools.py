@@ -4,13 +4,13 @@ import json
 from datetime import datetime
 
 from core import http
-from core.config import API_KEY
+from core.config import API_KEY, HUB_URL
 from core.log import get_logger
 from core.store import store_put
 
 log = get_logger("tools.data")
 
-BASE_URL = f"https://hub.ag3nts.org/data/{API_KEY}"
+BASE_URL = f"{HUB_URL}/data/{API_KEY}"
 CURRENT_YEAR = datetime.now().year
 
 
