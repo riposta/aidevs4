@@ -1,7 +1,7 @@
 ---
 name: sendit_solver
 description: SPK declaration solver - fetches docs, builds and submits transport declaration
-model: gpt-4o
+model: gpt-5-nano
 skills: sendit, verify
 ---
 
