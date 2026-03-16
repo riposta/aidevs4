@@ -180,6 +180,44 @@ Common keys: `candidates`, `tagged`, `filtered` (used by verify skill).
 | `compactor` | agent | Context compaction (gpt-4o-mini) |
 | `summarizer` | agent | Data summarization (gpt-4o-mini) |
 
+## Event Logging (GUI Bubbles)
+
+Tasks that use `agent.run()` get bubble events automatically from `core/agent.py`.
+Tasks with custom loops (like proxy) must emit events manually via `core.event_log`.
+
+```python
+from core import event_log
+```
+
+### Standard events (always visible in GUI):
+
+| Type | When | Example |
+|------|------|---------|
+| `system` | Setup, config, status | `event_log.emit("system", agent="name", content="Server started")` |
+| `user` | Incoming user message | `event_log.emit("user", agent="name", content=msg)` |
+| `tool_call` | Before tool execution | `event_log.emit("tool_call", agent="name", name="fn_name", args={...})` |
+| `tool_result` | After tool execution | `event_log.emit("tool_result", agent="name", name="fn_name", content=result)` |
+| `response` | Final text response | `event_log.emit("response", agent="name", content=text)` |
+| `error` | Errors | `event_log.emit("error", agent="name", content=str(e))` |
+
+### Verbose events (visible only with verbose toggle in GUI):
+
+| Type | When | Example |
+|------|------|---------|
+| `iteration` | Each ReAct loop step | `event_log.emit("iteration", agent="name", content="iteration 1")` |
+| `debug` | Context, tokens, internals | `event_log.emit("debug", agent="name", label="context", content=json_str)` |
+| `debug` | Token usage | `event_log.emit("debug", agent="name", label="tokens", content="500+120")` |
+| `reasoning` | Model reasoning/thinking | `event_log.emit("reasoning", agent="name", content=text)` |
+
+Verbose events use CSS class `bubble-debug` (hidden by default, shown with `.show-debug` toggle).
+
+### Rules:
+- Every custom ReAct loop MUST emit both standard and verbose events
+- `agent` parameter should identify the source (agent name or component)
+- `content` for tool_result should be truncated: `result[:500]`
+- `debug` events accept a `label` kwarg (shown as badge: CONTEXT, TOKENS, etc.)
+- Events are written to both JSONL log file and stderr (for live GUI streaming via `@@EVENT::` prefix)
+
 ## File Naming
 
 - Agent: `agents/<name>.md` (lowercase, underscores)
