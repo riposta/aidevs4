@@ -16,6 +16,9 @@
         </div>
     </div>
     <div class="result-content">
+        {% if extract_flag(data) %}
+        <div class="result-flag">{{ extract_flag(data) }}</div>
+        {% endif %}
         <div class="result-section">
             <div class="result-label">response</div>
             <pre class="result-json" id="responseJson">{{ data.response | tojson(indent=2) }}</pre>

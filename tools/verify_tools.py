@@ -1,8 +1,8 @@
 import json
-from datetime import datetime, timezone
 from pathlib import Path
 
 from core.log import get_logger
+from core.result import save_result
 from core.store import store_get, store_put
 from core.verify import verify as _verify
 
@@ -20,18 +20,7 @@ def submit_answer(task_name: str, input_key: str) -> str:
     answer = json.loads(raw)
     log.info("Submitting for task '%s' from key '%s'", task_name, input_key)
     result = _verify(task_name, answer)
-
-    # Save result to results/<task_name>.json
-    RESULTS_DIR.mkdir(exist_ok=True)
-    result_path = RESULTS_DIR / f"{task_name}.json"
-    result_data = {
-        "task": task_name,
-        "answer": answer,
-        "response": result,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    result_path.write_text(json.dumps(result_data, indent=2, ensure_ascii=False))
-    log.info("Result saved to %s", result_path)
+    save_result(task_name, answer, result)
 
     return json.dumps(result, ensure_ascii=False)
 

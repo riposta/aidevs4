@@ -13,6 +13,7 @@ from core.agent import _load_agent_from_markdown, function_to_openai_tool
 from core.config import OPENAI_API_KEY, PROXY_PORT
 from core import event_log
 from core.log import get_logger
+from core.result import save_result
 from core.verify import verify
 
 log = get_logger("proxy")
@@ -167,6 +168,7 @@ def run():
         try:
             result = verify("proxy", {"url": public_url, "sessionID": session_id})
             log.info("Verify result: %s", result)
+            save_result("proxy", {"url": public_url, "sessionID": session_id}, result)
             event_log.emit("response", agent="verify", content=str(result))
         except Exception as e:
             log.error("Verify error: %s", e)
@@ -175,6 +177,19 @@ def run():
         # Keep tunnel alive for verify callbacks
         log.info("Keeping tunnel alive for callbacks (90s)...")
         time.sleep(90)
+
+        # Check conversation for flags and update result
+        for sid, msgs in sessions.items():
+            for m in msgs:
+                content = m.get("content") or ""
+                flag_match = re.search(r"\{FLG:[^}]+\}", str(content))
+                if flag_match:
+                    flag = flag_match.group(0)
+                    log.info("Flag found in session %s: %s", sid, flag)
+                    event_log.emit("system", agent="proxy", content=f"Flag: {flag}")
+                    save_result("proxy", {"url": public_url, "sessionID": session_id},
+                                {"code": 0, "message": flag})
+                    break
     finally:
         tunnel_proc.terminate()
         tunnel_proc.wait(timeout=5)

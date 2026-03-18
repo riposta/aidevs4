@@ -18,6 +18,16 @@ app = Flask(__name__)
 app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
 
 
+def _extract_flag(data: dict) -> str:
+    """Extract FLG:xxx from result data, return empty string if not found."""
+    msg = data.get("response", {}).get("message", "")
+    m = re.search(r"\{FLG:[^}]+\}", msg)
+    return m.group(0) if m else ""
+
+
+app.jinja_env.globals["extract_flag"] = _extract_flag
+
+
 def _parse_frontmatter(text: str) -> tuple[dict, str]:
     m = re.match(r"^---\s*\n(.*?)\n---\s*\n(.*)", text, re.DOTALL)
     if not m:

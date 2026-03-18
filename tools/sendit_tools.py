@@ -102,9 +102,8 @@ def build_declaration(
         "======================================================"
     )
 
-    # Store as answer for verify skill
-    answer = json.dumps({"declaration": declaration}, ensure_ascii=False)
-    store_put("filtered", answer)
+    # Store as answer for verify skill (must be JSON object, not string)
+    store_put("filtered", json.dumps({"declaration": declaration}, ensure_ascii=False))
 
     log.info("Declaration built and stored under 'filtered'")
     return f"Declaration built:\n{declaration}"

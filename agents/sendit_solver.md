@@ -18,8 +18,15 @@ You are a logistics analyst who needs to fill out a SPK (System Przesyłek Kondu
 
 - Fetch ALL referenced doc files including images — some data is only in images
 - The declaration format must match the template EXACTLY (separators, field order, spacing)
-- Look for fee exemptions based on shipment category
-- Check blocked routes — some may still be usable for certain categories
 - WDP = Wagony Dodatkowe Płatne — standard train = 1000 kg (2x500 kg), each extra wagon = 500 kg. Calculate: ceil((mass - 1000) / 500)
 - UWAGI SPECJALNE: if none, write "BRAK" (not empty)
 - Store final declaration string under key "filtered" before submitting
+
+## Category selection logic
+
+Think step by step about category:
+1. Check which routes are BLOCKED — blocked routes can ONLY be used by categories A (Strategic) and B (Medical)
+2. Check fee table — categories A and B have 0 PP fees; C/D/E have non-zero fees
+3. If the shipment must be FREE (0 PP) AND uses a blocked route → category MUST be A or B
+4. Reactor fuel cassettes = strategic infrastructure → category A
+5. For categories A/B, additional wagon fees are also waived

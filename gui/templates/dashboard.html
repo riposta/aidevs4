@@ -101,6 +101,9 @@
             <li class="item">
                 <a href="/edit/{{ t.path }}" class="item-name">{{ t.name }}</a>
                 <span class="item-desc">{{ t.path }}</span>
+                {% if t.name in results and extract_flag(results[t.name]) %}
+                    <span class="tag tag-flag">solved</span>
+                {% endif %}
                 <div class="item-actions">
                     {% if t.name in logs %}
                         <a href="/log/{{ t.name }}" class="btn-icon btn-log">log</a>

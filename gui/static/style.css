@@ -822,6 +822,29 @@ a:hover { color: var(--green); text-shadow: 0 0 8px var(--green); }
     color: var(--cyan-dim);
 }
 
+.result-flag {
+    padding: 12px 16px;
+    background: rgba(0, 255, 65, 0.08);
+    border: 1px solid var(--green);
+    border-radius: 4px;
+    color: var(--green);
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    text-shadow: 0 0 12px var(--green-dark);
+    letter-spacing: 2px;
+}
+
+.tag-flag {
+    font-size: 10px;
+    padding: 1px 8px;
+    border: 1px solid var(--green);
+    border-radius: 2px;
+    color: var(--green);
+    text-shadow: 0 0 6px var(--green-dark);
+    margin-left: 8px;
+}
+
 /* Bubble timeline */
 .bubble-timeline {
     flex: 1;

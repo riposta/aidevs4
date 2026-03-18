@@ -5,6 +5,7 @@ import requests
 
 from core.config import API_KEY, VERIFY_URL
 from core.log import get_logger
+from core.result import save_result
 from core.store import store_put
 
 log = get_logger("tools.railway")
@@ -79,4 +80,6 @@ def railway_save(route: str) -> str:
     result = _railway_api("save", route=route)
     text = json.dumps(result, ensure_ascii=False)
     store_put("filtered", text)
+    if "FLG:" in text:
+        save_result("railway", {"route": route}, result)
     return text

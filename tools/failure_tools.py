@@ -6,6 +6,7 @@ import tiktoken
 
 from core.config import API_KEY, HUB_URL, VERIFY_URL
 from core.log import get_logger
+from core.result import save_result
 from core.store import store_put, store_get
 
 log = get_logger("tools.failure")
@@ -232,6 +233,7 @@ def failure_submit() -> str:
 
     if "FLG:" in message:
         store_put("filtered", message)
+        save_result("failure", {"logs": compressed}, data)
         return f"FLAG FOUND: {message}"
 
     return f"Response (code={data.get('code')}): {message}"
