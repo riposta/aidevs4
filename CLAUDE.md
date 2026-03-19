@@ -43,9 +43,11 @@ tasks/<task_name>/__init__.py  (empty file)
 from core.agent import get_agent
 
 def run():
-    solver = get_agent("<agent_name>")
-    solver.run("<high-level instruction>")
+    solver = get_agent("<task_name>_solver")
+    solver.run("<high-level instruction in Polish — describe what to do>")
 ```
+
+Convention: agent name = `<task_name>_solver`.
 
 If multiple agents need to collaborate, use `load_agents()`:
 
@@ -53,31 +55,33 @@ If multiple agents need to collaborate, use `load_agents()`:
 from core.agent import load_agents
 
 def run():
-    agents = load_agents("agent1", "agent2")
-    agents["agent1"].run("Do the task")
+    agents = load_agents("people_solver", "findhim_solver")
+    agents["findhim_solver"].run("Find the suspect using people results")
 ```
 
 ### 2. Create agent definition
 
-File: `agents/<agent_name>.md`
+File: `agents/<task_name>_solver.md`
 
 ```markdown
 ---
-name: <display_name>
+name: <task_name>_solver
 description: <one-line description>
-model: gpt-4o
-skills: skill1, skill2, skill3
+model: gpt-5-nano
+skills: <task_skill>, verify
 ---
 
-You are a task solver agent. <describe the goal>
-
-Activate each skill with `use_skill` before using its tools.
+You are a <role>. <describe the goal in 1-2 sentences>
 
 ## Process
 
-1. Use "skill1" skill to <purpose>
-2. Use "skill2" skill to <purpose>
-3. Use "skill3" skill to submit the answer
+1. Use "<task_skill>" skill to <purpose>
+2. Use "verify" skill to submit the answer with task_name="<task_name>"
+
+## Key rules
+
+- <domain-specific reasoning hints that help the model pick correct values>
+- <constraints or edge cases the model should watch for>
 ```
 
 Rules:
@@ -85,6 +89,9 @@ Rules:
 - `use_skill` activation requirement is in the system prompt — agent knows to call it
 - Keep process high-level and semantic
 - Model defaults to `gpt-5-nano` if omitted
+- Always include `verify` in skills list (for submitting answers)
+- Add reasoning hints in "Key rules" when the model needs to deduce values from docs (e.g. category selection logic, fee calculation)
+- The instruction in `solver.run()` should be specific enough that the agent knows WHAT to do, the agent definition describes HOW
 
 ### 3. Create skills (or reuse existing)
 
@@ -122,7 +129,6 @@ log = get_logger("tools.<skill_name>")
 
 def tool_func1(param1: str, param2: str) -> str:
     """One-line description for OpenAI function schema."""
-    # Do work...
     result = process(param1, param2)
 
     # Store large data for next tools
@@ -136,7 +142,7 @@ def tool_func2(tag: str) -> str:
     data = store_get("result_key")
     if data is None:
         return "Error: no data found. Run tool_func1 first."
-    # Process...
+    # Process and store final answer for verify
     store_put("filtered", json.dumps(filtered, ensure_ascii=False))
     return f"Filtered to {len(filtered)} items"
 ```
@@ -152,11 +158,37 @@ Rules:
 
 ### 5. Reusable skill: verify
 
-The `verify` skill with `submit_answer(task_name)` is already available.
-It reads from store key `"filtered"` and submits to verification API.
-Just add `verify` to agent's skills list.
+The `verify` skill is already available. Add `verify` to agent's skills list.
 
-### 6. Test
+Tools provided by verify skill:
+- `submit_answer(task_name, input_key)` — reads answer from store key `input_key`, submits to verification API, auto-saves result to `results/<task_name>.json`
+- `load_result(task_name, output_key)` — loads a previous task's answer from `results/<task_name>.json` into store under `output_key` (useful when tasks depend on each other)
+
+**IMPORTANT: The answer stored under `input_key` MUST be a JSON object or array, never a plain string.** The verification API rejects plain strings. Always store dicts or lists:
+
+```python
+# CORRECT — dict or list
+store_put("filtered", json.dumps({"field": value}, ensure_ascii=False))
+store_put("filtered", json.dumps([item1, item2], ensure_ascii=False))
+
+# WRONG — plain string (will cause 400 Bad Request)
+store_put("filtered", json.dumps("some text", ensure_ascii=False))
+```
+
+### 6. Result saving
+
+Results are saved automatically by `submit_answer` to `results/<task_name>.json`.
+For tasks with custom submit logic (not using verify skill), use `core.result.save_result`:
+
+```python
+from core.result import save_result
+
+save_result("task_name", answer_data, {"code": 0, "message": "{FLG:...}"})
+```
+
+The GUI reads these files to show flags and results on the dashboard.
+
+### 7. Test
 
 ```bash
 python run.py <task_name>       # Normal run
@@ -167,16 +199,17 @@ python run.py <task_name> -v    # Verbose (DEBUG) logging
 
 Tools pass large data between each other via `core.store`:
 - `store_put(key, json_string)` — save data
-- `store_get(key)` — read data
-- Agent never sees store contents — only short summaries
+- `store_get(key)` — read data (returns `None` if key missing)
+- Agent never sees store contents — only short summaries from tool return values
 
-Common keys: `candidates`, `tagged`, `filtered` (used by verify skill).
+Common keys: `candidates`, `tagged`, `filtered` (default key read by verify skill).
 
 ## Existing Reusable Components
 
 | Component | Type | Purpose |
 |-----------|------|---------|
-| `verify` | skill | Submit answer via `submit_answer(task_name)` — reads `"filtered"` from store |
+| `verify` | skill | `submit_answer(task_name, input_key)` — submits answer + saves result |
+| `verify` | skill | `load_result(task_name, output_key)` — loads previous task's answer into store |
 | `compactor` | agent | Context compaction (gpt-4o-mini) |
 | `summarizer` | agent | Data summarization (gpt-4o-mini) |
 
