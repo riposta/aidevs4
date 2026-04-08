@@ -1,9 +1,11 @@
 import json
+import re
 import time
 
 from core import http
 from core.config import API_KEY, HUB_URL
 from core.log import get_logger
+from core.result import save_result
 from core.store import store_put
 from core.verify import verify as _verify
 
@@ -19,6 +21,12 @@ def run_shell_cmd(cmd: str) -> str:
         result = _verify("shellaccess", {"cmd": cmd})
         output = json.dumps(result, ensure_ascii=False)
         log.info("Output: %s", output[:500])
+        # Detect flag in response
+        msg = result.get("message", "")
+        if re.search(r"\{FLG:[^}]+\}", msg):
+            log.info("Flag found: %s", msg)
+            save_result("shellaccess", {"cmd": cmd}, result)
+            return f"FLAG FOUND: {msg}. Task complete!"
         return output
     except Exception as e:
         log.error("Command failed: %s", e)
