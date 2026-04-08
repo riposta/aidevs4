@@ -51,6 +51,52 @@ def _load_tools_from_py(py_path: Path, tool_names: list[str]) -> dict[str, Calla
     return tools
 
 
+_tool_index: dict[str, Callable] | None = None
+
+
+def _build_tool_index() -> dict[str, Callable]:
+    """Build a global index of all tool functions from tools/*_tools.py files."""
+    global _tool_index
+    if _tool_index is not None:
+        return _tool_index
+
+    _tool_index = {}
+    if not TOOLS_DIR.exists():
+        return _tool_index
+
+    for py_path in sorted(TOOLS_DIR.glob("*_tools.py")):
+        spec = importlib.util.spec_from_file_location(py_path.stem, py_path)
+        module = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            log.warning("Failed to load %s: %s", py_path, e)
+            continue
+        for attr_name in dir(module):
+            obj = getattr(module, attr_name)
+            if callable(obj) and not attr_name.startswith("_") and attr_name not in _tool_index:
+                _tool_index[attr_name] = obj
+
+    log.debug("Tool index built: %d functions from tools/", len(_tool_index))
+    return _tool_index
+
+
+def _find_tools(tool_names: list[str]) -> dict[str, Callable]:
+    """Find tool functions by name from the global tool index."""
+    index = _build_tool_index()
+    tools: dict[str, Callable] = {}
+
+    for name in tool_names:
+        fn = index.get(name)
+        if fn is not None:
+            tools[name] = fn
+            log.debug("Loaded tool '%s'", name)
+        else:
+            log.warning("Tool '%s' not found in any tools/*_tools.py file", name)
+
+    return tools
+
+
 @dataclass
 class Skill:
     name: str
@@ -68,9 +114,8 @@ class Skill:
         description = meta.get("description", "")
         tool_names = [t.strip() for t in meta.get("tools", "").split(",") if t.strip()]
 
-        # Load tools from tools/<skill_name>_tools.py
-        tools_py = TOOLS_DIR / f"{path.stem}_tools.py"
-        tool_fns = _load_tools_from_py(tools_py, tool_names) if tool_names else {}
+        # Load tools by searching ALL tools/*_tools.py files
+        tool_fns = _find_tools(tool_names) if tool_names else {}
 
         log.debug("Loaded skill '%s' (tools=%s) from %s", name, tool_names or "none", path)
 

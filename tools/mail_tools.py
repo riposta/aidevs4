@@ -5,7 +5,7 @@ from core.config import API_KEY, HUB_URL
 from core.log import get_logger
 from core.store import store_put
 
-log = get_logger("tools.mailbox")
+log = get_logger("tools.mail")
 
 ZMAIL_URL = f"{HUB_URL}/api/zmail"
 

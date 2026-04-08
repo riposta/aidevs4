@@ -3,12 +3,15 @@ import time
 
 import requests
 
-from core.config import API_KEY, VERIFY_URL
+from core import http
+from core.config import API_KEY, HUB_URL, VERIFY_URL
 from core.log import get_logger
 from core.result import save_result
 from core.store import store_put
 
-log = get_logger("tools.railway")
+log = get_logger("tools.transport")
+
+# === Railway ===
 
 MAX_RETRIES = 20
 
@@ -83,3 +86,72 @@ def railway_save(route: str) -> str:
     if "FLG:" in text:
         save_result("railway", {"route": route}, result)
     return text
+
+
+# === Drone ===
+
+
+def drone_submit(instructions: str) -> str:
+    """Submit drone flight instructions as JSON array of command strings. Returns API response."""
+    try:
+        instr_list = json.loads(instructions)
+    except json.JSONDecodeError:
+        return "Error: instructions must be a valid JSON array of strings."
+
+    payload = {
+        "apikey": API_KEY,
+        "task": "drone",
+        "answer": {"instructions": instr_list},
+    }
+    log.info("Submitting %d instructions", len(instr_list))
+    resp = http.post(VERIFY_URL, json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+
+    msg = data.get("message", "")
+    code = data.get("code", -1)
+
+    if "FLG:" in msg:
+        store_put("filtered", json.dumps({"instructions": instr_list}, ensure_ascii=False))
+        log.info("FLAG received: %s", msg)
+        return f"SUCCESS! Flag: {msg}"
+
+    log.info("Response (code=%d): %s", code, msg[:200])
+    return f"API response (code={code}): {msg}"
+
+
+# === Packages ===
+
+PACKAGES_URL = f"{HUB_URL}/api/packages"
+
+
+def check_package(packageid: str) -> str:
+    """Check status and location of a package by its ID."""
+    payload = {
+        "apikey": API_KEY,
+        "action": "check",
+        "packageid": packageid,
+    }
+    log.info("Checking package %s", packageid)
+    resp = http.post(PACKAGES_URL, json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    log.info("Package %s: %s", packageid, data)
+    return json.dumps(data, ensure_ascii=False)
+
+
+def redirect_package(packageid: str, destination: str, code: str) -> str:
+    """Redirect a package to a new destination. Requires package ID, destination code, and security code."""
+    payload = {
+        "apikey": API_KEY,
+        "action": "redirect",
+        "packageid": packageid,
+        "destination": destination,
+        "code": code,
+    }
+    log.info("Redirecting package %s to %s", packageid, destination)
+    resp = http.post(PACKAGES_URL, json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    log.info("Redirect result for %s: %s", packageid, data)
+    return json.dumps(data, ensure_ascii=False)

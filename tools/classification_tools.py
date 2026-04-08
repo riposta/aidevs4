@@ -10,7 +10,7 @@ from core.log import get_logger
 from core.result import save_result
 from core.store import store_put, store_get
 
-log = get_logger("tools.categorize")
+log = get_logger("tools.classification")
 
 
 def categorize_reset() -> str:

@@ -14,7 +14,7 @@ from core.store import store_put, store_get
 from core.result import save_result
 from core import http, event_log
 
-log = get_logger("tools.radiomonitoring")
+log = get_logger("tools.monitoring")
 
 TMPDIR = Path("/tmp/radiomonitoring")
 TMPDIR.mkdir(exist_ok=True)

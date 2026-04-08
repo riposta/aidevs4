@@ -9,7 +9,7 @@ from core.log import get_logger
 from core.result import save_result
 from core.store import store_put, store_get
 
-log = get_logger("tools.failure")
+log = get_logger("tools.logs")
 
 LOG_URL = f"{HUB_URL}/data/{API_KEY}/failure.log"
 ENC = tiktoken.encoding_for_model("gpt-4o")

@@ -11,7 +11,7 @@ from core.store import store_put
 from core.result import save_result
 from core import http, event_log
 
-log = get_logger("tools.phonecall")
+log = get_logger("tools.audio")
 
 
 _tts_cache = {}

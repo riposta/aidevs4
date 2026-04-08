@@ -1,5 +1,3 @@
-from tools.data_tools import download_and_filter  # re-export for skill loader
-
 import json
 import math
 
@@ -10,7 +8,7 @@ from core.config import API_KEY, HUB_URL
 from core.log import get_logger
 from core.store import store_get, store_put
 
-log = get_logger("tools.findhim")
+log = get_logger("tools.geo")
 
 LOCATION_URL = f"{HUB_URL}/api/location"
 ACCESS_LEVEL_URL = f"{HUB_URL}/api/accesslevel"
@@ -23,6 +21,20 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
     return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _geocode_city(city_name: str) -> tuple[float, float] | None:
+    """Geocode a Polish city using Nominatim."""
+    resp = requests.get(
+        "https://nominatim.openstreetmap.org/search",
+        params={"q": f"{city_name}, Poland", "format": "json", "limit": 1},
+        headers={"User-Agent": "aidevs-task/1.0"},
+    )
+    resp.raise_for_status()
+    results = resp.json()
+    if results:
+        return float(results[0]["lat"]), float(results[0]["lon"])
+    return None
 
 
 def fetch_all_locations(input_key: str, output_key: str, plants_key: str) -> str:
@@ -64,20 +76,6 @@ def fetch_all_locations(input_key: str, output_key: str, plants_key: str) -> str
     store_put(output_key, json.dumps(results, ensure_ascii=False))
     city_names = list(plants.keys())
     return f"Fetched locations for {len(results)} candidates into '{output_key}', {len(plants)} plants into '{plants_key}'. Power plant cities: {', '.join(city_names)}. Now provide GPS coordinates for these cities to find_nearest_powerplant."
-
-
-def _geocode_city(city_name: str) -> tuple[float, float] | None:
-    """Geocode a Polish city using Nominatim."""
-    resp = requests.get(
-        "https://nominatim.openstreetmap.org/search",
-        params={"q": f"{city_name}, Poland", "format": "json", "limit": 1},
-        headers={"User-Agent": "aidevs-task/1.0"},
-    )
-    resp.raise_for_status()
-    results = resp.json()
-    if results:
-        return float(results[0]["lat"]), float(results[0]["lon"])
-    return None
 
 
 def find_nearest_powerplant(input_key: str, plants_key: str, output_key: str) -> str:
