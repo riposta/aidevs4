@@ -11,5 +11,6 @@ def run():
         "4. Znajdź hasło komendą 'find *pass*' i przeczytaj znaleziony plik\n"
         "5. Napraw settings.ini (editline) i uruchom binarke z hasłem\n"
         "6. Gdy uzyskasz kod ECCS-..., zapisz go firmware_store_answer i wyślij przez verify\n"
-        "7. Po udanym submit ZAKOŃCZ — napisz końcową wiadomość tekstową"
+        "7. Po udanym submit ZAKOŃCZ — napisz końcową wiadomość tekstową",
+        max_iterations=50,
     )
