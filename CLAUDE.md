@@ -6,11 +6,12 @@
 aidevs4/
 ├── core/           # Framework (don't modify unless asked)
 ├── agents/         # Agent definitions (.md with YAML frontmatter)
-├── skills/         # Skill definitions (.md with YAML frontmatter)
-├── tools/          # Tool implementations (Python)
-├── tasks/          # Task entry points
+│   └── universal_solver.md  # Single agent for all tasks
+├── skills/         # Skill definitions (.md — one per task)
+├── tools/          # Tool implementations (Python — organized by category)
+├── tasks/          # Task entry points (minimal stubs)
 │   └── <name>/
-│       ├── task.py       # def run() — loads agent and starts it
+│       ├── task.py       # def run() — calls run_task()
 │       └── __init__.py
 └── run.py          # CLI: python run.py <task_name> [-v]
 ```
@@ -19,14 +20,15 @@ aidevs4/
 
 | Layer | Contains | Knows about |
 |-------|----------|-------------|
-| **Agent** (.md) | Goal, skill names, high-level process | Only skill names and purpose |
+| **Task** (.py) | Minimal stub: `run_task(name, instruction)` | Task name and instruction text |
+| **Agent** (.md) | Universal solver — generic process | Only "activate skill, follow instructions" |
 | **Skill** (.md) | Tool usage instructions, task-specific parameters | Tool names, parameter values |
-| **Tool** (.py) | Generic reusable logic | Store keys, APIs, data processing |
-| **Task** (.py) | Agent wiring | Only which agent to load |
+| **Tool** (.py) | Generic reusable logic, organized by category | Store keys, APIs, data processing |
 
-Agent NEVER mentions tool names directly — only refers to skills.
-Skill contains concrete parameters (URLs, filter values, tag names).
-Tool is generic and reusable across tasks.
+One universal agent (`universal_solver`) handles all tasks.
+Skills are lazy-loaded by name — agent activates them via `use_skill`.
+Tools are organized by category (shell, transport, geo, etc.), not by task name.
+Skill loader searches ALL `tools/*_tools.py` files for functions.
 
 ## Adding a New Task — Step by Step
 
@@ -37,69 +39,26 @@ tasks/<task_name>/task.py
 tasks/<task_name>/__init__.py  (empty file)
 ```
 
-`task.py` is minimal — only loads agent and runs it:
+`task.py` is a minimal stub using the universal agent:
 
 ```python
-from core.agent import get_agent
+from core.agent import run_task
 
 def run():
-    solver = get_agent("<task_name>_solver")
-    solver.run("<high-level instruction in Polish — describe what to do>")
+    run_task("<task_name>", "<instruction describing what to do>")
 ```
 
-Convention: agent name = `<task_name>_solver`.
+`run_task` loads `universal_solver`, prefixes instruction with skill activation hint, and runs with 30 max iterations (configurable via `max_iterations` kwarg).
 
-If multiple agents need to collaborate, use `load_agents()`:
+No per-task agent needed — the universal agent handles everything.
 
-```python
-from core.agent import load_agents
+### 2. Create skill (one per task)
 
-def run():
-    agents = load_agents("people_solver", "findhim_solver")
-    agents["findhim_solver"].run("Find the suspect using people results")
-```
-
-### 2. Create agent definition
-
-File: `agents/<task_name>_solver.md`
+File: `skills/<task_name>.md` — skill name MUST match task name (convention).
 
 ```markdown
 ---
-name: <task_name>_solver
-description: <one-line description>
-model: gpt-5-nano
-skills: <task_skill>, verify
----
-
-You are a <role>. <describe the goal in 1-2 sentences>
-
-## Process
-
-1. Use "<task_skill>" skill to <purpose>
-2. Use "verify" skill to submit the answer with task_name="<task_name>"
-
-## Key rules
-
-- <domain-specific reasoning hints that help the model pick correct values>
-- <constraints or edge cases the model should watch for>
-```
-
-Rules:
-- Process refers to SKILLS by name, never to specific tool functions
-- `use_skill` activation requirement is in the system prompt — agent knows to call it
-- Keep process high-level and semantic
-- Model defaults to `gpt-5-nano` if omitted
-- Always include `verify` in skills list (for submitting answers)
-- Add reasoning hints in "Key rules" when the model needs to deduce values from docs (e.g. category selection logic, fee calculation)
-- The instruction in `solver.run()` should be specific enough that the agent knows WHAT to do, the agent definition describes HOW
-
-### 3. Create skills (or reuse existing)
-
-File: `skills/<skill_name>.md`
-
-```markdown
----
-name: <skill_name>
+name: <task_name>
 description: <one-line description shown to agent before activation>
 tools: tool_func1, tool_func2
 ---
@@ -108,43 +67,52 @@ tools: tool_func1, tool_func2
 
 Use `tool_func1` with param1="value1", param2="value2".
 Then use `tool_func2` with tag="specific_tag".
+
+After completion, use verify skill: submit_answer(task_name="<task_name>", input_key="filtered")
 ```
 
 Rules:
+- Skill name == task name (universal agent activates skill by task name)
 - Skill body contains task-specific parameters (filter values, tag names, URLs, etc.)
-- `tools:` in frontmatter lists function names from the companion `_tools.py` file
+- `tools:` in frontmatter lists function names — loader searches ALL `tools/*_tools.py` files
 - Description should be short — it's shown in system prompt before activation
 - Body is shown only when agent calls `use_skill`
+- Include verify/submit instructions unless the tool handles submission internally
 
-### 4. Create tool implementations
+### 3. Add tools to existing category file (or create new category)
 
-File: `tools/<skill_name>_tools.py` — filename must match skill name!
+Tools are organized by category in `tools/<category>_tools.py`. Add new functions to the appropriate existing file:
+
+| Category | File | What belongs here |
+|----------|------|-------------------|
+| `verify` | `verify_tools.py` | Answer submission, result loading |
+| `data` | `data_tools.py` | CSV download, filtering, tagging, classification |
+| `shell` | `shell_tools.py` | Remote command execution |
+| `mail` | `mail_tools.py` | Email search and reading |
+| `audio` | `audio_tools.py` | TTS, STT, phone conversations |
+| `geo` | `geo_tools.py` | Geocoding, distance, location lookup |
+| `grid` | `grid_tools.py` | Board/grid puzzle solving |
+| `navigation` | `navigation_tools.py` | Pathfinding, route planning |
+| `transport` | `transport_tools.py` | Railway, drone, package operations |
+| `document` | `document_tools.py` | Document fetch, filesystem, declarations |
+| `logs` | `logs_tools.py` | Log analysis and compression |
+| `monitoring` | `monitoring_tools.py` | Signal collection and analysis |
+| `web` | `web_tools.py` | Web scraping, API servers, tunnels |
+| `classification` | `classification_tools.py` | Item categorization with budget |
+| `evaluation` | `evaluation_tools.py` | Sensor data anomaly detection |
 
 ```python
 import json
 from core.log import get_logger
 from core.store import store_put, store_get
 
-log = get_logger("tools.<skill_name>")
+log = get_logger("tools.<category>")
 
 def tool_func1(param1: str, param2: str) -> str:
     """One-line description for OpenAI function schema."""
     result = process(param1, param2)
-
-    # Store large data for next tools
     store_put("result_key", json.dumps(result, ensure_ascii=False))
-
-    # Return short summary for agent context
     return f"Processed {len(result)} items: {summary}"
-
-def tool_func2(tag: str) -> str:
-    """Filter results by tag."""
-    data = store_get("result_key")
-    if data is None:
-        return "Error: no data found. Run tool_func1 first."
-    # Process and store final answer for verify
-    store_put("filtered", json.dumps(filtered, ensure_ascii=False))
-    return f"Filtered to {len(filtered)} items"
 ```
 
 Rules:
@@ -154,7 +122,8 @@ Rules:
 - Use `store_put()`/`store_get()` for large data between tools
 - Store is cleared at each `agent.run()` start
 - Docstring becomes the tool description in OpenAI schema
-- Logger name: `tools.<skill_name>`
+- Logger name: `tools.<category>`
+- Filename does NOT need to match skill name — loader searches globally
 
 ### 5. Reusable skill: verify
 
@@ -208,6 +177,7 @@ Common keys: `candidates`, `tagged`, `filtered` (default key read by verify skil
 
 | Component | Type | Purpose |
 |-----------|------|---------|
+| `universal_solver` | agent | Universal task solver — handles all tasks via lazy skill loading |
 | `verify` | skill | `submit_answer(task_name, input_key)` — submits answer + saves result |
 | `verify` | skill | `load_result(task_name, output_key)` — loads previous task's answer into store |
 | `compactor` | agent | Context compaction (gpt-4o-mini) |
@@ -253,7 +223,9 @@ Verbose events use CSS class `bubble-debug` (hidden by default, shown with `.sho
 
 ## File Naming
 
-- Agent: `agents/<name>.md` (lowercase, underscores)
-- Skill: `skills/<name>.md`
-- Tools: `tools/<name>_tools.py` (must match skill stem!)
-- Task: `tasks/<name>/task.py`
+- Agent: `agents/universal_solver.md` (single universal agent)
+- Skill: `skills/<task_name>.md` (one per task, name matches task)
+- Tools: `tools/<category>_tools.py` (organized by function category, NOT by task)
+- Task: `tasks/<name>/task.py` (minimal stub calling `run_task`)
+
+Exception: `proxy` task has custom `task.py` with Flask server (not using universal agent).

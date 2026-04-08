@@ -36,9 +36,9 @@ aidevs4/
 │   ├── http.py         # HTTP client with 429 retry (exponential backoff)
 │   ├── event_log.py    # Structured JSONL event logging
 │   └── log.py          # Color logger with global level control
-├── agents/             # Agent definitions (.md)
-├── skills/             # Skill definitions (.md)
-├── tools/              # Tool implementations (.py)
+├── agents/             # Agent definitions (.md) — universal_solver + utilities
+├── skills/             # Skill definitions (.md) — one per task
+├── tools/              # Tool implementations (.py) — organized by category
 ├── tasks/              # Task entry points
 │   └── <name>/
 │       ├── task.py     # def run() — loads agent(s) and starts
@@ -58,10 +58,13 @@ aidevs4/
 
 | Layer | File | Contains | Knows about |
 |-------|------|----------|-------------|
-| **Task** | `tasks/<name>/task.py` | Agent wiring | Only which agent to load |
-| **Agent** | `agents/<name>.md` | Goal, process steps | Skill names (never tool names) |
-| **Skill** | `skills/<name>.md` | Tool usage instructions, parameters | Tool names, store keys |
-| **Tool** | `tools/<name>_tools.py` | Reusable logic | APIs, data processing |
+| **Task** | `tasks/<name>/task.py` | Minimal stub: `run_task(name, instruction)` | Task name + instruction |
+| **Agent** | `agents/universal_solver.md` | Generic process: activate skill → follow instructions | "use_skill" mechanism |
+| **Skill** | `skills/<task_name>.md` | Tool usage instructions, parameters | Tool names, store keys |
+| **Tool** | `tools/<category>_tools.py` | Reusable logic by category | APIs, data processing |
+
+One universal agent handles all tasks. Skills are lazy-loaded by name.
+Tools organized by category (shell, transport, geo, etc.), not by task.
 
 ### Data Flow
 
@@ -85,30 +88,18 @@ Agent (LLM)
 
 ### Agent Execution (ReAct Loop)
 
-1. Agent gets system prompt (from `.md` body) + available skills list
-2. Agent calls `use_skill("skill_name")` to unlock tools
-3. Skill instructions + tool schemas are loaded into context
-4. Agent calls tools with parameters from skill instructions
-5. Tool results (summaries) go back to agent context
-6. Loop continues until agent returns text response
-7. Max iterations configurable per task (default: 10)
-
-### Multi-Agent Collaboration
-
-Agents can call each other via `call_agent(agent_name, message)`:
-
-```python
-# task.py — wire agents into shared registry
-agents = load_agents("people_solver", "findhim_solver")
-agents["findhim_solver"].run("Find the suspect...")
-# findhim_solver can now call people_solver as a sub-agent
-```
-
-Sub-agent runs preserve the shared store (`clear_store=False`).
+1. `run_task("task_name", "instruction")` loads universal_solver agent
+2. Instruction is prefixed with `[Task: task_name] First activate skill "task_name"`
+3. Agent calls `use_skill("task_name")` — skill is lazy-loaded from `skills/` directory
+4. Skill instructions + tool schemas loaded into context (tools found globally across all `tools/*_tools.py`)
+5. Agent calls tools with parameters from skill instructions
+6. Tool results (summaries) go back to agent context
+7. Loop continues until agent returns text response
+8. Max iterations: 30 default (configurable per task)
 
 ## Creating a New Task
 
-### 1. Task entry point
+### 1. Task entry point (minimal stub)
 
 ```
 tasks/<name>/task.py
@@ -116,61 +107,51 @@ tasks/<name>/__init__.py  (empty)
 ```
 
 ```python
-from core.agent import get_agent
+from core.agent import run_task
 
 def run():
-    solver = get_agent("<agent_name>")
-    solver.run("<instruction>")
+    run_task("<task_name>", "<instruction describing what to do>")
 ```
 
-### 2. Agent definition — `agents/<name>.md`
+No per-task agent needed — `run_task` uses the universal agent.
+
+### 2. Skill definition — `skills/<task_name>.md`
+
+Skill name MUST match task name (convention for lazy loading).
 
 ```markdown
 ---
-name: my_agent
-description: One-line description
-model: gpt-4o
-skills: skill1, skill2, verify
----
-
-You are a task solver agent.
-
-Activate each skill with `use_skill` before using its tools.
-
-## Process
-
-1. Use "skill1" skill to <purpose>
-2. Use "skill2" skill to <purpose>
-3. Use "verify" skill to submit the answer for task "<name>" with input_key="answer"
-```
-
-### 3. Skill definition — `skills/<name>.md`
-
-```markdown
----
-name: my_skill
+name: <task_name>
 description: Short description (shown before activation)
 tools: tool_func1, tool_func2
 ---
 
 Use `tool_func1` with param1="value1", output_key="data".
 Then use `tool_func2` with input_key="data", output_key="result".
+
+After completion, use verify skill: submit_answer(task_name="<task_name>", input_key="result")
 ```
 
-### 4. Tool implementation — `tools/<name>_tools.py`
+### 3. Tool implementation — add to existing category file
+
+Add functions to the appropriate `tools/<category>_tools.py` file:
+
+| Category | File | What belongs here |
+|----------|------|-------------------|
+| `data` | `data_tools.py` | CSV download, filtering, tagging |
+| `shell` | `shell_tools.py` | Remote command execution |
+| `geo` | `geo_tools.py` | Geocoding, distance, location |
+| `transport` | `transport_tools.py` | Railway, drone, packages |
+| `web` | `web_tools.py` | Web scraping, API servers |
+| `document` | `document_tools.py` | Document fetch, file creation |
+| ... | ... | See CLAUDE.md for full list |
 
 ```python
-import json
-from core.log import get_logger
-from core.store import store_put, store_get
-
-log = get_logger("tools.<name>")
-
 def tool_func1(param1: str, output_key: str) -> str:
     """One-line description for OpenAI function schema."""
     result = do_work(param1)
     store_put(output_key, json.dumps(result, ensure_ascii=False))
-    return f"Processed {len(result)} items"  # short summary for agent
+    return f"Processed {len(result)} items"
 ```
 
 **Rules:**
@@ -178,12 +159,13 @@ def tool_func1(param1: str, output_key: str) -> str:
 - Always return `str` — goes into agent context
 - Return SHORT summaries, store large data in `core.store`
 - Docstring becomes the tool description in OpenAI schema
-- Filename must match skill: skill `data` → `tools/data_tools.py`
+- Tool files organized by category — loader searches ALL `tools/*_tools.py` globally
 
-### 5. Reuse existing components
+### 4. Reuse existing components
 
 | Component | Type | Purpose |
 |-----------|------|---------|
+| `universal_solver` | agent | Universal task solver (handles all tasks) |
 | `verify` | skill | `submit_answer(task_name, input_key)` — submits to API, saves result |
 | `verify` | skill | `load_result(task_name, output_key)` — loads previous task result into store |
 | `data` | skill | `download_and_filter(dataset, filters_json, output_key)` — CSV download |
