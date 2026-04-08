@@ -1,10 +1,8 @@
-from core.agent import get_agent
+from core.agent import run_task
 
 
 def run():
-    solver = get_agent("mailbox_solver")
-    solver.max_iterations = 20
-    solver.run(
+    run_task("mailbox",
         "Przeszukaj skrzynkę mailową operatora. Znajdź trzy informacje: "
         "1) date - kiedy dział bezpieczeństwa planuje atak na elektrownię (format YYYY-MM-DD), "
         "2) password - hasło do systemu pracowniczego, "

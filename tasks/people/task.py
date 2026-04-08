@@ -1,9 +1,8 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("people_solver")
-    solver.run(
+    run_task("people",
         "Execute the people task: download and filter candidates, tag their jobs, "
-        "then submit only those with the transport tag."
+        "then submit only those with the transport tag. Use the people skill — "
+        "it contains all steps and parameters."
     )

@@ -1,6 +1,5 @@
-from core.agent import get_agent
+from core.agent import run_task
 
 
 def run():
-    solver = get_agent("windpower_solver")
-    solver.run("Skonfiguruj turbinę wiatrową i zdobądź flagę. Użyj narzędzia do automatycznej konfiguracji.")
+    run_task("windpower", "Skonfiguruj turbinę wiatrową i zdobądź flagę. Użyj narzędzia do automatycznej konfiguracji.")

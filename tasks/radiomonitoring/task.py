@@ -1,9 +1,7 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("radiomonitoring_solver")
-    solver.run(
+    run_task("radiomonitoring",
         "Rozpocznij nasłuch radiowy, zbierz wszystkie sygnały, przeanalizuj je "
         "i ustal: jakie miasto kryje się pod nazwą Syjon, jaka jest jego powierzchnia, "
         "ile ma magazynów i jaki jest numer telefonu osoby kontaktowej. "

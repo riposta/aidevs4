@@ -1,6 +1,4 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("okoeditor_solver")
-    solver.run("Wykonaj wszystkie wymagane zmiany w systemie OKO i uruchom akcję done aby odebrać flagę.")
+    run_task("okoeditor", "Wykonaj wszystkie wymagane zmiany w systemie OKO i uruchom akcję done aby odebrać flagę.")

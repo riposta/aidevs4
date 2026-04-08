@@ -1,6 +1,5 @@
-from core.agent import get_agent
+from core.agent import run_task
 
 
 def run():
-    solver = get_agent("foodwarehouse_solver")
-    solver.run("Utwórz zamówienia dla wszystkich miast z poprawnym podpisem i towarami, potem zweryfikuj.")
+    run_task("foodwarehouse", "Utwórz zamówienia dla wszystkich miast z poprawnym podpisem i towarami, potem zweryfikuj.")

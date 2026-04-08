@@ -1,6 +1,4 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("electricity_solver")
-    solver.run("Rozwiąż puzzle elektryczne. Doprowadź prąd do wszystkich elektrowni.")
+    run_task("electricity", "Rozwiąż puzzle elektryczne. Doprowadź prąd do wszystkich elektrowni.")

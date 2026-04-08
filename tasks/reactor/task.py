@@ -1,6 +1,4 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("reactor_solver")
-    solver.run("Przeprowadź robota przez reaktor do punktu docelowego. Użyj narzędzia do nawigacji.")
+    run_task("reactor", "Przeprowadź robota przez reaktor do punktu docelowego. Użyj narzędzia do nawigacji.")

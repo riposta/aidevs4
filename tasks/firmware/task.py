@@ -1,10 +1,8 @@
-from core.agent import get_agent
+from core.agent import run_task
 
 
 def run():
-    solver = get_agent("firmware_solver")
-    solver.max_iterations = 35
-    solver.run(
+    run_task("firmware",
         "Uruchom plik /opt/firmware/cooler/cooler.bin na maszynie wirtualnej.\n"
         "Krok po kroku:\n"
         "1. Aktywuj skill 'firmware', wykonaj 'help', potem 'reboot'\n"

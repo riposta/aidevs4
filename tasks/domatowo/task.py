@@ -1,6 +1,4 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("domatowo_solver")
-    solver.run("Odnajdź partyzanta ukrywającego się w najwyższym bloku w Domatowie i wezwij helikopter ewakuacyjny.")
+    run_task("domatowo", "Odnajdź partyzanta ukrywającego się w najwyższym bloku w Domatowie i wezwij helikopter ewakuacyjny.")

@@ -1,6 +1,4 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("categorize_solver")
-    solver.run("Sklasyfikuj wszystkie towary z CSV. Zresetuj budżet, pobierz dane i wyślij klasyfikację.")
+    run_task("categorize", "Sklasyfikuj wszystkie towary z CSV. Zresetuj budżet, pobierz dane i wyślij klasyfikację.")

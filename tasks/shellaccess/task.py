@@ -1,10 +1,8 @@
-from core.agent import get_agent
+from core.agent import run_task
 
 
 def run():
-    solver = get_agent("shellaccess_solver")
-    solver.max_iterations = 25
-    solver.run(
+    run_task("shellaccess",
         "Explore the remote server's /data directory using shell commands. "
         "Find logs mentioning Rafał — determine the date his body was found, the city, and GPS coordinates. "
         "The meeting date is ONE DAY BEFORE Rafał was found. "

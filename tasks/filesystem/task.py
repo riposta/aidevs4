@@ -1,6 +1,5 @@
-from core.agent import get_agent
+from core.agent import run_task
 
 
 def run():
-    solver = get_agent("filesystem_solver")
-    solver.run("Utwórz strukturę plików na podstawie notatek Natana i zweryfikuj wynik.")
+    run_task("filesystem", "Utwórz strukturę plików na podstawie notatek Natana i zweryfikuj wynik.")

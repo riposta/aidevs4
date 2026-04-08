@@ -1,6 +1,4 @@
-from core.agent import get_agent
-
+from core.agent import run_task
 
 def run():
-    solver = get_agent("failure_solver")
-    solver.run("Przeanalizuj logi awarii elektrowni. Skompresuj je do 1500 tokenów i wyślij do weryfikacji.")
+    run_task("failure", "Przeanalizuj logi awarii elektrowni. Skompresuj je do 1500 tokenów i wyślij do weryfikacji.")

@@ -145,29 +145,29 @@ class Agent:
     def _openai_tools(self) -> list[dict]:
         tools = [function_to_openai_tool(fn) for fn in self.tools.values()]
 
-        if self.skills:
-            tools.append({
-                "type": "function",
-                "function": {
-                    "name": "use_skill",
-                    "description": (
-                        "Activate a skill and unlock its tools. "
-                        "You MUST call this before using any tools from a skill. "
-                        "Returns skill instructions and list of unlocked tools."
-                    ),
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "skill_name": {
-                                "type": "string",
-                                "description": "Name of the skill to use",
-                                "enum": list(self.skills.keys()),
-                            },
+        # use_skill is always available — skills can be lazy-loaded from skills/ directory
+        tools.append({
+            "type": "function",
+            "function": {
+                "name": "use_skill",
+                "description": (
+                    "Activate a skill by name and unlock its tools. "
+                    "You MUST call this before using any tools from a skill. "
+                    "Skills are loaded from the skills/ directory. "
+                    "Returns skill instructions and list of unlocked tools."
+                ),
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "skill_name": {
+                            "type": "string",
+                            "description": "Name of the skill to activate",
                         },
-                        "required": ["skill_name"],
                     },
+                    "required": ["skill_name"],
                 },
-            })
+            },
+        })
 
         if self.registry:
             others = [n for n in self.registry.names() if n != self.name]
@@ -207,9 +207,16 @@ class Agent:
         if fn_name == "use_skill":
             skill_name = fn_args["skill_name"]
             skill = self.skills.get(skill_name)
+            # Lazy-load skill from skills/ directory if not pre-loaded
             if skill is None:
-                log.warning("[%s] Skill '%s' not found", self.name, skill_name)
-                return f"Error: skill '{skill_name}' not found. Available: {list(self.skills.keys())}"
+                skill_path = PROJECT_ROOT / "skills" / f"{skill_name}.md"
+                if skill_path.exists():
+                    skill = Skill.from_markdown(skill_path)
+                    self.skills[skill_name] = skill
+                    log.info("[%s] Lazy-loaded skill '%s' from %s", self.name, skill_name, skill_path)
+                else:
+                    log.warning("[%s] Skill '%s' not found", self.name, skill_name)
+                    return f"Error: skill '{skill_name}' not found"
             # Register skill tools on the agent (lazy activation)
             activated = []
             for tool_name, tool_fn in skill.tool_fns.items():
@@ -434,3 +441,12 @@ def load_agents(*names: str) -> dict[str, Agent]:
 
     log.info("Loaded %d agent(s): %s", len(agents), list(agents.keys()))
     return agents
+
+
+def run_task(task_name: str, instruction: str, max_iterations: int = 30) -> str:
+    """Load universal_solver, run it with task-specific instruction."""
+    agent = get_agent("universal_solver")
+    agent.max_iterations = max_iterations
+    # Prefix instruction with skill activation hint
+    full_instruction = f'[Task: {task_name}] First activate skill "{task_name}" using use_skill. Then: {instruction}'
+    return agent.run(full_instruction)
