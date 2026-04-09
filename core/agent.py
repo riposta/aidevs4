@@ -552,16 +552,20 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
         agent = get_agent("adaptive_solver")
         agent.max_iterations = max_iterations
 
-        # Pre-register generic tools so they appear in OpenAI tool schemas
+        # Pre-register ALL tools directly — no skill activation needed
         from tools.base_tools import call_task_api, fetch_url, put_store, get_store
         from tools.sandbox_tools import run_python
         from tools.ai_tools import ask_llm, text_to_speech, speech_to_text
+        from tools.verify_tools import submit_answer, load_result
         for fn in [call_task_api, fetch_url, put_store, get_store, run_python,
-                   ask_llm, text_to_speech, speech_to_text]:
+                   ask_llm, text_to_speech, speech_to_text,
+                   submit_answer, load_result]:
             agent.add_tool(fn)
+        # Clear skills so use_skill doesn't appear in tool list
+        agent.skills.clear()
 
-        # Inject tool catalog + memory into system prompt (keep it light)
-        extra = [build_tool_catalog()]
+        # Inject memory into system prompt (tools are in schemas, no catalog needed)
+        extra = []
 
         if learned_skill:
             extra.append(f"\n## Learned Approach (follow this!)\n\n{learned_skill}")
