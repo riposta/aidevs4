@@ -51,7 +51,9 @@ def call_task_api(task: str, answer: str) -> str:
 
 def fetch_url(url: str) -> str:
     """Fetch content from any URL. API key is auto-injected into URLs containing placeholders. Returns text (max 50KB) or for binary: saves to store and returns metadata."""
-    # Auto-inject API key into URL placeholders from lessons
+    # Auto-inject API key into URL placeholders from lessons (plain + URL-encoded)
+    from urllib.parse import unquote
+    url = unquote(url)  # decode %C3%B3 → ó etc.
     url = url.replace("tutaj-twoj-klucz", API_KEY)
     url = url.replace("tutaj-twój-klucz", API_KEY)
     url = url.replace("{API_KEY}", API_KEY)
