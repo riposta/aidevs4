@@ -50,7 +50,12 @@ def call_task_api(task: str, answer: str) -> str:
 
 
 def fetch_url(url: str) -> str:
-    """Fetch content from any URL. Returns text (max 50KB) or for binary: saves to store and returns metadata. For large/binary files, use run_python with urllib instead."""
+    """Fetch content from any URL. API key is auto-injected into URLs containing placeholders. Returns text (max 50KB) or for binary: saves to store and returns metadata."""
+    # Auto-inject API key into URL placeholders from lessons
+    url = url.replace("tutaj-twoj-klucz", API_KEY)
+    url = url.replace("tutaj-twój-klucz", API_KEY)
+    url = url.replace("{API_KEY}", API_KEY)
+    url = url.replace("{apikey}", API_KEY)
     log.info("Fetching: %s", url)
     try:
         resp = http.get(url)
