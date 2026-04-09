@@ -524,8 +524,19 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
         lesson_path = _find_lesson(task_name)
     if not lesson_path or not lesson_path.exists():
         raise FileNotFoundError(f"Lesson file not found for task '{task_name}'. Provide lesson= parameter.")
-    task_description = lesson_path.read_text()
-    log.info("[adaptive] Reading lesson: %s (%d chars)", lesson_path.name, len(task_description))
+    full_text = lesson_path.read_text()
+    # Extract task section starting from "## Zadanie"
+    import re as _re
+    task_match = _re.search(r'^## Zadanie.*$', full_text, _re.MULTILINE)
+    if task_match:
+        task_description = full_text[task_match.start():]
+        log.info("[adaptive] Extracted task section from %s (%d chars, starting at line %d)",
+                 lesson_path.name, len(task_description),
+                 full_text[:task_match.start()].count('\n') + 1)
+    else:
+        task_description = full_text
+        log.warning("[adaptive] No '## Zadanie' section found in %s, using full lesson (%d chars)",
+                    lesson_path.name, len(task_description))
 
     # Load memory
     reflections = load_reflections(task_name)
