@@ -565,12 +565,14 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
         agent = get_agent("adaptive_solver")
         agent.max_iterations = max_iterations
 
-        from tools.base_tools import call_task_api, fetch_url, put_store, get_store
+        from tools.base_tools import (call_task_api, fetch_url, put_store, get_store,
+                                       http_post, download_file, store_list, web_session)
         from tools.sandbox_tools import run_python
         from tools.ai_tools import ask_llm, text_to_speech, speech_to_text
         from tools.verify_tools import submit_answer, load_result
-        for fn in [call_task_api, fetch_url, put_store, get_store, run_python,
-                   ask_llm, text_to_speech, speech_to_text,
+        for fn in [call_task_api, fetch_url, http_post, download_file,
+                   put_store, get_store, store_list, web_session,
+                   run_python, ask_llm, text_to_speech, speech_to_text,
                    submit_answer, load_result]:
             agent.add_tool(fn)
         agent.skills.clear()
