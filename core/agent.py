@@ -552,9 +552,8 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
         agent = get_agent("adaptive_solver")
         agent.max_iterations = max_iterations
 
-        # Inject context into system prompt
+        # Inject tool catalog + memory into system prompt (keep it light)
         extra = [build_tool_catalog()]
-        extra.append(f"\n## Task Description\n\n{task_description}")
 
         if learned_skill:
             extra.append(f"\n## Learned Approach (follow this!)\n\n{learned_skill}")
@@ -565,12 +564,8 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
 
         agent.system_prompt += "\n\n" + "\n".join(extra)
 
-        # Build instruction
-        instruction = f'[Task: {task_name}] Solve this task. Read the task description in your system prompt.'
-        if learned_skill:
-            instruction += ' A learned approach is provided — follow it.'
-        else:
-            instruction += ' No learned approach yet — explore the API and figure it out.'
+        # Task description goes as user prompt (first message)
+        instruction = f"[Task: {task_name}]\n\n{task_description}"
 
         # Run agent
         try:
