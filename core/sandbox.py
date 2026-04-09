@@ -3,6 +3,7 @@ import io
 import sys
 import json
 import contextlib
+from core.config import API_KEY, VERIFY_URL, HUB_URL
 from core.store import store_put, store_get
 from core.log import get_logger
 
@@ -13,9 +14,10 @@ def execute(code: str) -> str:
     """Execute Python code in a restricted environment. Returns stdout.
     Sandbox has access to: json, csv, re, math, datetime, base64, zipfile,
     hashlib, heapq, collections, itertools, functools, urllib.parse, html,
-    xml.etree.ElementTree, statistics.
+    xml.etree.ElementTree, statistics, requests.
     Use _store_put(key, json_str) and _store_get(key) for data passing.
-    Use _store_put_json(key, obj) for convenience."""
+    Use _store_put_json(key, obj) for convenience.
+    Use _API_KEY, _VERIFY_URL, _HUB_URL for API access."""
     stdout_capture = io.StringIO()
 
     sandbox_globals = {
@@ -23,6 +25,9 @@ def execute(code: str) -> str:
         "_store_put": store_put,
         "_store_get": store_get,
         "_store_put_json": lambda key, obj: store_put(key, json.dumps(obj, ensure_ascii=False)),
+        "_API_KEY": API_KEY,
+        "_VERIFY_URL": VERIFY_URL,
+        "_HUB_URL": HUB_URL,
     }
 
     try:
