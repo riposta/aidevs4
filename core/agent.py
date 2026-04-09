@@ -548,9 +548,17 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
     for attempt in range(1, max_attempts + 1):
         log.info("[adaptive] %s attempt %d/%d", task_name, attempt, max_attempts)
 
-        # Build agent with extended system prompt
+        # Build agent with extended system prompt and pre-registered tools
         agent = get_agent("adaptive_solver")
         agent.max_iterations = max_iterations
+
+        # Pre-register generic tools so they appear in OpenAI tool schemas
+        from tools.base_tools import call_task_api, fetch_url, put_store, get_store
+        from tools.sandbox_tools import run_python
+        from tools.ai_tools import ask_llm, text_to_speech, speech_to_text
+        for fn in [call_task_api, fetch_url, put_store, get_store, run_python,
+                   ask_llm, text_to_speech, speech_to_text]:
+            agent.add_tool(fn)
 
         # Inject tool catalog + memory into system prompt (keep it light)
         extra = [build_tool_catalog()]
