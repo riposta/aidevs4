@@ -850,6 +850,16 @@ a:hover { color: var(--green); text-shadow: 0 0 8px var(--green); }
     margin-left: 8px;
 }
 
+.flag-blur {
+    filter: blur(4px);
+    transition: filter 0.2s ease;
+    cursor: default;
+}
+
+.flag-blur:hover {
+    filter: none;
+}
+
 /* Bubble timeline */
 .bubble-timeline {
     flex: 1;

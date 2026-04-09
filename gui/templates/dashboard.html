@@ -51,7 +51,7 @@
                     {{ l.title }}
                 </a>
                 {% if l.task_name and l.task_name in results and extract_flag(results[l.task_name]) %}
-                    <span class="tag tag-flag">{{ extract_flag(results[l.task_name]) }}</span>
+                    <span class="tag tag-flag flag-blur">{{ extract_flag(results[l.task_name]) }}</span>
                 {% endif %}
                 <div class="item-actions">
                     {% if l.task_name in logs %}
