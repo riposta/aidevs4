@@ -1,6 +1,6 @@
 # AIDevs4 Console
 
-Agent framework for solving AI Devs (season 4) tasks. ReAct loop with OpenAI function calling, layered architecture (Agent > Skill > Tool), web GUI with live bubble logs.
+Self-improving agent framework for solving AI Devs (season 4) tasks. The agent reads lesson markdown files, discovers APIs on its own, solves tasks using generic tools, and learns from failures via reflection.
 
 ## Quick Start
 
@@ -14,163 +14,142 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env — set API_KEY and OPENAI_API_KEY
 
-# 3. Run a task
-python run.py <task_name>        # normal mode
-python run.py <task_name> -v     # verbose (DEBUG logging)
+# 3. Add lessons
+# Place lesson .md files from the AI Devs course into lessons/ directory
+# The framework auto-detects task names from lesson content
 
-# 4. Run GUI
-python gui/app.py                # http://localhost:5099
-```
+# 4. Run a task
+python run.py railway           # by task name
+python run.py s01e05            # by lesson prefix
+python run.py railway -v        # verbose mode
 
-## Architecture
-
-```
-aidevs4/
-├── core/               # Framework internals
-│   ├── agent.py        # ReAct loop, agent registry, tool execution
-│   ├── context.py      # Message context with pinning & compaction
-│   ├── skill.py        # Skill loader (markdown frontmatter)
-│   ├── store.py        # Key-value store for passing data between tools
-│   ├── config.py       # .env config (API_KEY, OPENAI_API_KEY)
-│   ├── verify.py       # POST to hub.ag3nts.org/verify
-│   ├── http.py         # HTTP client with 429 retry (exponential backoff)
-│   ├── event_log.py    # Structured JSONL event logging
-│   └── log.py          # Color logger with global level control
-├── agents/             # Agent definitions (.md) — universal_solver + utilities
-├── skills/             # Skill definitions (.md) — one per task
-├── tools/              # Tool implementations (.py) — organized by category
-├── tasks/              # Task entry points
-│   └── <name>/
-│       ├── task.py     # def run() — loads agent(s) and starts
-│       └── __init__.py
-├── gui/                # Web GUI (Flask)
-│   ├── app.py          # Routes, SSE streaming, CRUD
-│   ├── templates/      # Jinja2 templates
-│   └── static/         # CSS
-├── results/            # Task results (JSON, auto-saved after verify)
-├── log/                # Run logs (.log text + .jsonl structured)
-└── run.py              # CLI entry point
+# 5. Run GUI
+python gui/app.py               # http://localhost:5099
 ```
 
 ## How It Works
 
-### Responsibility Layers
+### Self-Improving Agent
 
-| Layer | File | Contains | Knows about |
-|-------|------|----------|-------------|
-| **Task** | `tasks/<name>/task.py` | Minimal stub: `run_task(name, instruction)` | Task name + instruction |
-| **Agent** | `agents/universal_solver.md` | Generic process: activate skill → follow instructions | "use_skill" mechanism |
-| **Skill** | `skills/<task_name>.md` | Tool usage instructions, parameters | Tool names, store keys |
-| **Tool** | `tools/<category>_tools.py` | Reusable logic by category | APIs, data processing |
+The agent receives **no pre-written instructions** for solving tasks. Instead:
 
-One universal agent handles all tasks. Skills are lazy-loaded by name.
-Tools organized by category (shell, transport, geo, etc.), not by task.
+1. **Reads the lesson** — the `## Zadanie` section is extracted from the lesson markdown and passed as the user prompt
+2. **Discovers the API** — calls `call_task_api(task, '{"action": "help"}')` to get API docs
+3. **Explores and solves** — uses generic tools (HTTP, Python sandbox, LLM) to interact with the API
+4. **Reflects on failure** — if an attempt fails, gpt-5.4 generates a structured reflection (what went wrong, what to try next)
+5. **Learns from reflections** — next attempt gets previous reflections in system prompt, enabling the agent to avoid past mistakes
+
+### Adding Lessons
+
+Place lesson `.md` files from the AI Devs course into the `lessons/` directory:
+
+```
+lessons/
+  s01e01-programowanie-interakcji-z-modelem-jezykowym-1773230257.md
+  s01e02-techniki-laczenia-modelu-z-narzedziami-1773132164.md
+  ...
+```
+
+**Requirements for lesson files:**
+- Filename must start with lesson prefix (e.g. `s01e05-...`)
+- Must contain a `## Zadanie` section (the practical task description)
+- Must contain a JSON example with `"task": "task_name"` — this is how the framework detects the task name
+
+On first run, the framework scans all lessons and generates `lesson_mapping.json`:
+```json
+{
+  "s01e05": {
+    "task_name": "railway",
+    "file": "s01e05-zarzadzanie-jawnymi-...",
+    "title": "Zarządzanie jawnymi oraz niejawnymi limitami modeli"
+  }
+}
+```
+
+Delete `lesson_mapping.json` to force regeneration after adding new lessons.
+
+### Architecture
+
+```
+aidevs4/
+├── core/               # Framework internals
+│   ├── agent.py        # ReAct loop + run_task_adaptive() with reflection
+│   ├── memory.py       # Reflections storage + generation (gpt-5.4)
+│   ├── sandbox.py      # Python execution sandbox for run_python tool
+│   ├── context.py      # Message context with pinning & compaction
+│   ├── skill.py        # Skill loader (global tool index)
+│   ├── store.py        # Key-value store for data between tools
+│   ├── proxy.py        # Custom proxy task (Flask server)
+│   ├── config.py       # .env config (API_KEY, OPENAI_API_KEY)
+│   ├── verify.py       # POST to hub.ag3nts.org/verify
+│   ├── http.py         # HTTP client with 429 retry
+│   ├── event_log.py    # Structured JSONL event logging
+│   └── log.py          # Color logger
+├── agents/
+│   └── adaptive_solver.md  # Self-improving agent (gpt-5.4)
+├── tools/              # Generic tools (organized by category)
+│   ├── base_tools.py   # call_task_api, fetch_url, http_post, download_file, store ops
+│   ├── sandbox_tools.py # run_python (Python execution)
+│   ├── ai_tools.py     # ask_llm (vision), text_to_speech, speech_to_text
+│   ├── infra_tools.py  # start_server (Flask + cloudflare tunnel)
+│   └── verify_tools.py # submit_answer, load_result
+├── lessons/            # Lesson .md files (user-provided, gitignored)
+├── lesson_mapping.json # Auto-generated: prefix → task_name
+├── memory/
+│   └── reflections/    # Per-task reflection logs (JSON)
+├── skills/             # Legacy pre-written skills (fallback)
+├── results/            # Task results (JSON, auto-saved)
+├── gui/                # Web GUI (Flask)
+├── log/                # Execution logs (.log + .jsonl)
+└── run.py              # CLI entry point
+```
+
+### Generic Tools
+
+The agent has these tools pre-registered — no activation needed:
+
+| Tool | Purpose |
+|------|---------|
+| `call_task_api(task, answer)` | POST to /verify — main task API, auto-detects flags |
+| `http_post(url, body)` | POST to any URL (e.g. /api/zmail, /api/shell) |
+| `fetch_url(url)` | GET any URL, text returned directly, binary saved to store |
+| `download_file(url, store_key)` | Download file to store without context bloat |
+| `run_python(code)` | Execute Python (json, csv, re, math, datetime, base64, zipfile, hashlib, heapq) |
+| `ask_llm(prompt, image_url)` | GPT-5.4 for text/vision analysis |
+| `text_to_speech(text)` | OpenAI TTS → base64 MP3 |
+| `speech_to_text(audio_base64)` | OpenAI Whisper → text |
+| `web_session(actions_json)` | Login + browse with persistent cookies |
+| `put_store(key, value)` | Save data to key-value store |
+| `get_store(key)` | Retrieve data from store |
+| `store_list()` | List all store keys with sizes |
+| `submit_answer(task_name, input_key)` | Submit store data to verify API |
+
+API key is auto-injected into URLs and hub.ag3nts.org POST bodies.
+
+### Reflection Loop
+
+```
+Attempt 1: Agent reads lesson → tries to solve → fails
+    ↓ gpt-5.4 generates reflection: {tools_used, summary, error, lesson}
+Attempt 2: Agent reads lesson + reflection from attempt 1 → adjusts approach → succeeds
+    ↓ reflection saved to memory/reflections/task_name.json
+```
+
+Reflections persist across runs. Max 3 attempts per run (configurable).
 
 ### Data Flow
 
 ```
-Agent (LLM)
-  │
-  ├─ use_skill("data") ──► Skill instructions loaded into context
-  │
-  ├─ download_and_filter(...) ──► Tool executes, stores data in store
-  │     │
-  │     └─ store_put("candidates", json) ──► Large data stays in store
-  │     └─ returns "Filtered 31 candidates"  ──► Short summary to agent
-  │
-  ├─ tag_people(...) ──► Reads from store, writes to store
-  │
-  └─ submit_answer(...) ──► Reads from store, POSTs to verify API
-                              └─ Saves result to results/<task>.json
+Lesson .md
+  ↓ extract ## Zadanie section
+Agent (gpt-5.4)
+  ├─ call_task_api("task", '{"action":"help"}')  → discovers API
+  ├─ fetch_url("https://...")                     → downloads data
+  ├─ run_python("import csv; ...")                → processes data
+  ├─ call_task_api("task", '{"answer": ...}')     → submits answer
+  │     └─ "FLAG FOUND: {FLG:...}"               → task solved!
+  └─ result saved to results/task_name.json
 ```
-
-**Key principle**: Tools pass large data between each other via `core.store` (key-value). Agent context only gets short summaries. Store keys are defined in skill `.md` files.
-
-### Agent Execution (ReAct Loop)
-
-1. `run_task("task_name", "instruction")` loads universal_solver agent
-2. Instruction is prefixed with `[Task: task_name] First activate skill "task_name"`
-3. Agent calls `use_skill("task_name")` — skill is lazy-loaded from `skills/` directory
-4. Skill instructions + tool schemas loaded into context (tools found globally across all `tools/*_tools.py`)
-5. Agent calls tools with parameters from skill instructions
-6. Tool results (summaries) go back to agent context
-7. Loop continues until agent returns text response
-8. Max iterations: 30 default (configurable per task)
-
-## Creating a New Task
-
-### 1. Task entry point (minimal stub)
-
-```
-tasks/<name>/task.py
-tasks/<name>/__init__.py  (empty)
-```
-
-```python
-from core.agent import run_task
-
-def run():
-    run_task("<task_name>", "<instruction describing what to do>")
-```
-
-No per-task agent needed — `run_task` uses the universal agent.
-
-### 2. Skill definition — `skills/<task_name>.md`
-
-Skill name MUST match task name (convention for lazy loading).
-
-```markdown
----
-name: <task_name>
-description: Short description (shown before activation)
-tools: tool_func1, tool_func2
----
-
-Use `tool_func1` with param1="value1", output_key="data".
-Then use `tool_func2` with input_key="data", output_key="result".
-
-After completion, use verify skill: submit_answer(task_name="<task_name>", input_key="result")
-```
-
-### 3. Tool implementation — add to existing category file
-
-Add functions to the appropriate `tools/<category>_tools.py` file:
-
-| Category | File | What belongs here |
-|----------|------|-------------------|
-| `data` | `data_tools.py` | CSV download, filtering, tagging |
-| `shell` | `shell_tools.py` | Remote command execution |
-| `geo` | `geo_tools.py` | Geocoding, distance, location |
-| `transport` | `transport_tools.py` | Railway, drone, packages |
-| `web` | `web_tools.py` | Web scraping, API servers |
-| `document` | `document_tools.py` | Document fetch, file creation |
-| ... | ... | See CLAUDE.md for full list |
-
-```python
-def tool_func1(param1: str, output_key: str) -> str:
-    """One-line description for OpenAI function schema."""
-    result = do_work(param1)
-    store_put(output_key, json.dumps(result, ensure_ascii=False))
-    return f"Processed {len(result)} items"
-```
-
-**Rules:**
-- Type hints required (str, int, float, bool only)
-- Always return `str` — goes into agent context
-- Return SHORT summaries, store large data in `core.store`
-- Docstring becomes the tool description in OpenAI schema
-- Tool files organized by category — loader searches ALL `tools/*_tools.py` globally
-
-### 4. Reuse existing components
-
-| Component | Type | Purpose |
-|-----------|------|---------|
-| `universal_solver` | agent | Universal task solver (handles all tasks) |
-| `verify` | skill | `submit_answer(task_name, input_key)` — submits to API, saves result |
-| `verify` | skill | `load_result(task_name, output_key)` — loads previous task result into store |
-| `data` | skill | `download_and_filter(dataset, filters_json, output_key)` — CSV download |
-| `compactor` | agent | Context compaction (gpt-5.4) |
-| `summarizer` | agent | Data summarization (gpt-5.4) |
 
 ## Web GUI
 
@@ -180,62 +159,29 @@ python gui/app.py    # starts on http://localhost:5099
 
 ### Dashboard
 
-Control panel at the top showing counts: Agents, Skills, Tools, Tasks, Solved (with ring chart).
-
-Four sections below:
-- **Agents** — click name to edit, hover for delete
-- **Skills** — click name to edit, hover for delete
-- **Tasks** — click name to edit, with **log**, **result**, and **run** buttons
-- **Tools** — lists tool files with their exported functions
+- **Lessons** — all 24 lessons listed with task names, flags (blurred, hover to reveal), log/result/run buttons
+- **Agents** — agent definitions
+- **Skills** — legacy skill files
+- **Tools** — tool files with exported functions
+- **Solved ring** — progress indicator
 
 ### Task Runner
 
-Click **run** on any task to open the runner view:
-- **Bubble view** (default) — live structured logs as chat bubbles:
-  - `SYS` — system prompt (agent config)
-  - `USER` — user message
-  - `THINK` — agent reasoning
-  - `→ TOOL` — tool call with arguments
-  - `← RESULT` — tool return value
-  - `RESPONSE` — final agent response
-  - `ERROR` — errors
-- **Raw view** — toggle "raw" for plain text terminal output
-- **Verbose** — toggle for DEBUG level logging
-- **Stop** — click running button to kill the process
+Click **run** on any lesson to open the runner with live streaming:
+- **Bubble view** — structured event bubbles (tool calls, results, reasoning)
+- **Raw view** — plain text terminal output
+- **Verbose** — toggle DEBUG logging
+- **Stop** — kill running process
 
-### Results
+### Lesson Viewer
 
-After a task submits via `submit_answer`, the result is saved to `results/<task>.json` containing:
-- `answer` — what was sent
-- `response` — API response (code + message)
-- `timestamp`
-
-Results are visible as **result** links on tasks. The result page has **copy answer** and **copy prompt** buttons for reuse.
-
-### Editor
-
-Click any agent, skill, tool, or task name to edit in CodeMirror with:
-- Syntax highlighting (Python / Markdown)
-- Ctrl+S / Cmd+S to save
-- **run** button when editing a task file
+Click lesson title to view the full markdown content with run button.
 
 ## HTTP Retry
 
-All requests to `hub.ag3nts.org` use `core.http` with automatic retry on 429 (rate limit):
+All requests to `hub.ag3nts.org` use `core.http` with automatic retry on 429:
 - Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 512s
 - Max 10 retries
-
-## Logging
-
-Two modes controlled by `-v` flag:
-
-| Level | What's logged |
-|-------|---------------|
-| **INFO** (default) | Iterations, message content, tool calls + results, reasoning |
-| **DEBUG** (`-v`) | Full context JSON, token usage, all internal details |
-
-Structured event logs are saved to `log/<task>.jsonl` for the bubble viewer.
-Text logs are saved to `log/<task>.log`.
 
 ## Environment Variables
 
