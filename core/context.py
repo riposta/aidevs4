@@ -170,7 +170,7 @@ class Context:
 
     # -- compaction ----------------------------------------------------------
 
-    def compact(self, tag: str | None = None, model: str = "gpt-5.4-mini") -> None:
+    def compact(self, tag: str | None = None, model: str = "gpt-5.4") -> None:
         """
         Compact unpinned entries (optionally filtered by tag)
         into a single summary using an LLM.

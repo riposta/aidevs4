@@ -146,7 +146,7 @@ def load_learned_skill(task_name: str) -> Optional[str]:
 
 def generate_learned_skill(task_name: str, instruction: str,
                           trajectory: str) -> str:
-    """Use gpt-5.4-mini to convert successful trajectory into a reusable skill."""
+    """Use gpt-5.4 to convert successful trajectory into a reusable skill."""
     client = OpenAI(api_key=OPENAI_API_KEY)
 
     prompt = f"""Convert this successful task execution into a reusable step-by-step skill document.

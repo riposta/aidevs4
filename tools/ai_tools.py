@@ -28,7 +28,7 @@ def ask_llm(prompt: str, image_url: str = "") -> str:
         content.append({"type": "image_url", "image_url": {"url": image_url}})
 
     resp = client.chat.completions.create(
-        model="gpt-5.4-mini",
+        model="gpt-5.4",
         messages=[{"role": "user", "content": content}],
         max_tokens=4096,
     )

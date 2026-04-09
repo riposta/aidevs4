@@ -50,25 +50,17 @@
                     <span class="tag tag-model" style="min-width:42px;text-align:center">{{ l.prefix }}</span>
                     {{ l.title }}
                 </a>
-                {% if l.task_name %}
-                    <span class="item-desc">task: {{ l.task_name }}</span>
-                {% endif %}
-                {% if l.task_name in solved %}
-                    <span class="tag tag-flag">solved</span>
-                {% endif %}
-                {% if l.task_name in learned %}
-                    <span class="tag tag-skill">learned</span>
+                {% if l.task_name and l.task_name in results and extract_flag(results[l.task_name]) %}
+                    <span class="tag tag-flag">{{ extract_flag(results[l.task_name]) }}</span>
                 {% endif %}
                 <div class="item-actions">
-                    {% if l.task_name and l.task_name in logs %}
+                    {% if l.task_name in logs %}
                         <a href="/log/{{ l.task_name }}" class="btn-icon btn-log">log</a>
                     {% endif %}
-                    {% if l.task_name and l.task_name in results %}
+                    {% if l.task_name in results %}
                         <a href="/result/{{ l.task_name }}" class="btn-icon btn-result">result</a>
                     {% endif %}
-                    {% if l.task_name %}
-                        <a href="/run/{{ l.task_name }}" class="btn-icon btn-run">run</a>
-                    {% endif %}
+                    <a href="/run/{{ l.prefix }}" class="btn-icon btn-run">run</a>
                 </div>
             </li>
         {% else %}

@@ -220,7 +220,7 @@ def create():
         content = f"""---
 name: {name}
 description:
-model: gpt-5.4-mini
+model: gpt-5.4
 skills:
 ---
 
@@ -333,16 +333,19 @@ def lesson_view(filename):
                            task_name=task_name, has_result=has_result, has_log=has_log)
 
 
-@app.route("/run/<task_name>")
-def run_task_page(task_name):
+@app.route("/run/<identifier>")
+def run_task_page(identifier):
+    # Resolve prefix (s01e05) to task_name (railway)
+    task_name = LESSON_TASK_MAP.get(identifier, identifier)
     return render_template("runner.html", task_name=task_name)
 
 
 _running_procs: dict[str, subprocess.Popen] = {}
 
 
-@app.route("/api/stop/<task_name>", methods=["POST"])
-def stop_task(task_name):
+@app.route("/api/stop/<identifier>", methods=["POST"])
+def stop_task(identifier):
+    task_name = LESSON_TASK_MAP.get(identifier, identifier)
     proc = _running_procs.get(task_name)
     if proc and proc.poll() is None:
         import signal
@@ -351,9 +354,11 @@ def stop_task(task_name):
     return jsonify({"error": "No running process"}), 404
 
 
-@app.route("/api/run/<task_name>")
-def run_task_stream(task_name):
+@app.route("/api/run/<identifier>")
+def run_task_stream(identifier):
     verbose = request.args.get("verbose", "false") == "true"
+    # Resolve prefix to task_name
+    task_name = LESSON_TASK_MAP.get(identifier, identifier)
 
     def generate():
         env = os.environ.copy()

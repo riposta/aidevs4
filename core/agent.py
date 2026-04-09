@@ -107,7 +107,7 @@ class Agent:
     name: str
     description: str
     system_prompt: str
-    model: str = "gpt-5.4-mini"
+    model: str = "gpt-5.4"
     skills: dict[str, Skill] = field(default_factory=dict)
     tools: dict[str, Callable] = field(default_factory=dict)
     context: Context = field(default_factory=Context)
@@ -381,7 +381,7 @@ def _load_agent_from_markdown(path: Path) -> Agent:
 
     name = meta.get("name", path.stem)
     description = meta.get("description", "")
-    model = meta.get("model", "gpt-5.4-mini")
+    model = meta.get("model", "gpt-5.4")
 
     # Load referenced skills from root skills/ dir
     skill_names = [s.strip() for s in meta.get("skills", "").split(",") if s.strip()]

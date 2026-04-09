@@ -48,7 +48,7 @@ def fetch_spk_image(filename: str) -> str:
 
     client = OpenAI(api_key=OPENAI_API_KEY)
     vision_resp = client.chat.completions.create(
-        model="gpt-5.4-mini",
+        model="gpt-5.4",
         messages=[{
             "role": "user",
             "content": [
