@@ -450,3 +450,99 @@ def run_task(task_name: str, instruction: str, max_iterations: int = 30) -> str:
     # Prefix instruction with skill activation hint
     full_instruction = f'[Task: {task_name}] First activate skill "{task_name}" using use_skill. Then: {instruction}'
     return agent.run(full_instruction)
+
+
+def run_task_adaptive(task_name: str, max_attempts: int = 3, max_iterations: int = 30) -> str:
+    """Run task with adaptive agent: reads task.md, uses memory, reflects on failures."""
+    from core.memory import (
+        build_tool_catalog, load_reflections, format_reflections,
+        load_learned_skill, save_learned_skill, generate_learned_skill,
+        save_reflection, generate_reflection,
+    )
+    import time
+
+    # Read task description from task.md
+    task_md_path = PROJECT_ROOT / "tasks" / task_name / "task.md"
+    if not task_md_path.exists():
+        raise FileNotFoundError(f"Task description not found: {task_md_path}")
+    task_description = task_md_path.read_text()
+
+    # Load memory
+    reflections = load_reflections(task_name)
+    learned_skill = load_learned_skill(task_name)
+
+    result_path = PROJECT_ROOT / "results" / f"{task_name}.json"
+    start_time = time.time()
+
+    for attempt in range(1, max_attempts + 1):
+        log.info("[adaptive] %s attempt %d/%d", task_name, attempt, max_attempts)
+
+        # Build agent with extended system prompt
+        agent = get_agent("adaptive_solver")
+        agent.max_iterations = max_iterations
+
+        # Inject context into system prompt
+        extra = [build_tool_catalog()]
+        extra.append(f"\n## Task Description\n\n{task_description}")
+
+        if learned_skill:
+            extra.append(f"\n## Learned Approach (follow this!)\n\n{learned_skill}")
+
+        refl_text = format_reflections(reflections)
+        if refl_text:
+            extra.append(f"\n{refl_text}")
+
+        agent.system_prompt += "\n\n" + "\n".join(extra)
+
+        # Build instruction
+        instruction = f'[Task: {task_name}] Solve this task. Read the task description in your system prompt.'
+        if learned_skill:
+            instruction += ' A learned approach is provided — follow it.'
+        else:
+            instruction += ' No learned approach yet — explore the API and figure it out.'
+
+        # Run agent
+        try:
+            result = agent.run(instruction)
+        except RuntimeError as e:
+            result = str(e)
+
+        # Check for success (new result file created during this run)
+        success = result_path.exists() and result_path.stat().st_mtime > start_time
+
+        # Extract trajectory for reflection
+        trajectory_parts = []
+        for entry in agent.context.entries:
+            if entry.tag == "tool_result":
+                trajectory_parts.append(str(entry.content)[:500])
+            elif entry.tag == "history" and isinstance(entry.content, dict):
+                tool_calls = entry.content.get("tool_calls", [])
+                for tc in tool_calls:
+                    fn = tc.get("function", {})
+                    trajectory_parts.append(f"-> {fn.get('name', '?')}({fn.get('arguments', '')[:200]})")
+        trajectory = "\n".join(trajectory_parts[-30:])
+
+        # Generate and save reflection
+        try:
+            reflection = generate_reflection(
+                task_name, task_description, trajectory, success, attempt
+            )
+            save_reflection(reflection)
+            reflections.append(reflection)
+        except Exception as e:
+            log.error("[adaptive] Failed to generate reflection: %s", e)
+
+        if success:
+            # Generate and save learned skill
+            try:
+                skill_body = generate_learned_skill(task_name, task_description, trajectory)
+                save_learned_skill(task_name, skill_body)
+            except Exception as e:
+                log.error("[adaptive] Failed to generate learned skill: %s", e)
+            log.info("[adaptive] %s SOLVED on attempt %d", task_name, attempt)
+            return result
+
+        log.warning("[adaptive] %s attempt %d failed", task_name, attempt)
+
+    log.error("[adaptive] %s failed after %d attempts", task_name, max_attempts)
+    raise RuntimeError(f"Task '{task_name}' failed after {max_attempts} attempts")
