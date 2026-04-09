@@ -13,11 +13,15 @@ log = get_logger("tools.base")
 
 
 def call_task_api(task: str, answer: str) -> str:
-    """Send answer to task API endpoint. Answer must be a JSON string (object or array). Returns response JSON. Detects flags automatically."""
+    """Send answer to task API. Provide ONLY the answer content as JSON string — apikey and task are added automatically. Example: call_task_api("railway", '{"action": "help"}'). Returns response JSON. Auto-detects flags."""
     try:
         answer_obj = json.loads(answer)
     except json.JSONDecodeError:
         return f"Error: answer must be valid JSON string, got: {answer[:100]}"
+
+    # If agent accidentally included full payload with apikey/task, extract just the answer
+    if isinstance(answer_obj, dict) and "answer" in answer_obj and "task" in answer_obj:
+        answer_obj = answer_obj["answer"]
 
     payload = {"apikey": API_KEY, "task": task, "answer": answer_obj}
     log.info("API call: task=%s answer=%s", task, str(answer_obj)[:200])
