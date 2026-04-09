@@ -18,7 +18,7 @@ from core.verify import verify
 
 log = get_logger("proxy")
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # Session storage: sessionID -> list of OpenAI messages
 sessions: dict[str, list[dict]] = {}

@@ -36,16 +36,17 @@ def main():
     lesson_path, task_name = _find_lesson(identifier)
 
     if not lesson_path or not lesson_path.exists():
-        # Fallback: try old tasks/ system for proxy and other special cases
-        log.warning("No lesson found for '%s', trying legacy tasks/ system", identifier)
-        from core.event_log import init as init_event_log, close as close_event_log
-        init_event_log(identifier)
-        try:
-            from tasks import run_task
-            run_task(identifier)
-        finally:
-            close_event_log()
-        return
+        if identifier == "proxy":
+            from core.event_log import init as init_event_log, close as close_event_log
+            init_event_log("proxy")
+            try:
+                from core.proxy import run
+                run()
+            finally:
+                close_event_log()
+            return
+        log.error("No lesson found for '%s'", identifier)
+        sys.exit(1)
 
     from core.event_log import init as init_event_log, close as close_event_log
     init_event_log(task_name)
