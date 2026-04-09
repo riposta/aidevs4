@@ -510,8 +510,7 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
         max_iterations: Max ReAct iterations per attempt
     """
     from core.memory import (
-        build_tool_catalog, load_reflections, format_reflections,
-        load_learned_skill, save_learned_skill, generate_learned_skill,
+        load_reflections, format_reflections,
         save_reflection, generate_reflection,
     )
     import time
@@ -540,7 +539,6 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
 
     # Load memory
     reflections = load_reflections(task_name)
-    learned_skill = load_learned_skill(task_name)
 
     result_path = PROJECT_ROOT / "results" / f"{task_name}.json"
     start_time = time.time()
@@ -548,11 +546,10 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
     for attempt in range(1, max_attempts + 1):
         log.info("[adaptive] %s attempt %d/%d", task_name, attempt, max_attempts)
 
-        # Build agent with extended system prompt and pre-registered tools
+        # Build agent with pre-registered tools (no skill activation needed)
         agent = get_agent("adaptive_solver")
         agent.max_iterations = max_iterations
 
-        # Pre-register ALL tools directly — no skill activation needed
         from tools.base_tools import call_task_api, fetch_url, put_store, get_store
         from tools.sandbox_tools import run_python
         from tools.ai_tools import ask_llm, text_to_speech, speech_to_text
@@ -561,18 +558,13 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
                    ask_llm, text_to_speech, speech_to_text,
                    submit_answer, load_result]:
             agent.add_tool(fn)
-        # Clear skills so use_skill doesn't appear in tool list
         agent.skills.clear()
 
-        # Inject memory into system prompt (tools are in schemas, no catalog needed)
-        extra = []
-
-        if learned_skill:
-            extra.append(f"\n## Learned Approach (follow this!)\n\n{learned_skill}")
-
+        # Inject reflections into system prompt
         refl_text = format_reflections(reflections)
+        extra = []
         if refl_text:
-            extra.append(f"\n{refl_text}")
+            extra.append(refl_text)
 
         agent.system_prompt += "\n\n" + "\n".join(extra)
 
@@ -611,12 +603,6 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
             log.error("[adaptive] Failed to generate reflection: %s", e)
 
         if success:
-            # Generate and save learned skill
-            try:
-                skill_body = generate_learned_skill(task_name, task_description, trajectory)
-                save_learned_skill(task_name, skill_body)
-            except Exception as e:
-                log.error("[adaptive] Failed to generate learned skill: %s", e)
             log.info("[adaptive] %s SOLVED on attempt %d", task_name, attempt)
             return result
 
