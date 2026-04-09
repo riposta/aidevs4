@@ -1,8 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
 
 
 def run():
-    run_task("savethem",
-        "Pobierz mapę miasta Skolwin, informacje o pojazdach, zasady terenu, "
-        "zaplanuj optymalną trasę i wyślij ją do weryfikacji."
-    )
+    run_task_adaptive("savethem",
+        lesson="lessons/s03e05-niedeterministyczna-natura-modeli-jako-przewaga-1774562727.md")

@@ -1,10 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
 
 
 def run():
-    run_task("findhim",
-        "Find which suspect was seen near a power plant. "
-        "Use the findhim skill — it handles everything: downloading candidates, "
-        "finding locations, identifying nearest powerplant, and getting access level. "
-        "Then submit the answer with verify skill: task_name='findhim', input_key='answer'."
-    )
+    run_task_adaptive("findhim",
+        lesson="lessons/s01e02-techniki-laczenia-modelu-z-narzedziami-1773132164.md")

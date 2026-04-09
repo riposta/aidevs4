@@ -1,8 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
 
 
 def run():
-    run_task("negotiations",
-        "Pobierz dane CSV z przedmiotami i miastami, uruchom serwer API do przeszukiwania danych, "
-        "wystaw go publicznie i zgłoś narzędzia do centrali. Następnie poczekaj na wynik i odbierz flagę."
-    )
+    run_task_adaptive("negotiations",
+        lesson="lessons/s03e04-budowanie-narzedzi-na-podstawie-danych-testowych-1774477151.md")

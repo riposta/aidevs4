@@ -1,4 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
+
 
 def run():
-    run_task("categorize", "Sklasyfikuj wszystkie towary z CSV. Zresetuj budżet, pobierz dane i wyślij klasyfikację.")
+    run_task_adaptive("categorize",
+        lesson="lessons/s02e01-zarzadzanie-kontekstem-w-konwersacji-1773691475.md")

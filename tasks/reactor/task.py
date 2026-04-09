@@ -1,4 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
+
 
 def run():
-    run_task("reactor", "Przeprowadź robota przez reaktor do punktu docelowego. Użyj narzędzia do nawigacji.")
+    run_task_adaptive("reactor",
+        lesson="lessons/s03e03-kontekstowy-feedback-wspierajacy-skutecznosc-agentow-1774391034.md")

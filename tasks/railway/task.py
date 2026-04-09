@@ -1,4 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
+
 
 def run():
-    run_task("railway", "Aktywuj trasę x-01. Otwórz ją używając sekwencji: reconfigure → setstatus RTOPEN → save.")
+    run_task_adaptive("railway",
+        lesson="lessons/s01e05-zarzadzanie-jawnymi-oraz-niejawnymi-limitami-modeli-1773377197.md")

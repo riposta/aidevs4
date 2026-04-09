@@ -1,9 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
+
 
 def run():
-    run_task("radiomonitoring",
-        "Rozpocznij nasłuch radiowy, zbierz wszystkie sygnały, przeanalizuj je "
-        "i ustal: jakie miasto kryje się pod nazwą Syjon, jaka jest jego powierzchnia, "
-        "ile ma magazynów i jaki jest numer telefonu osoby kontaktowej. "
-        "Następnie wyślij raport końcowy."
-    )
+    run_task_adaptive("radiomonitoring",
+        lesson="lessons/s05e01-architektura-1775412680.md")

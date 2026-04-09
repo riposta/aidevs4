@@ -1,10 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
 
 
 def run():
-    run_task("sendit",
-        "Wypełnij deklarację transportu SPK dla przesyłki z Gdańska do Żarnowca. "
-        "Nadawca: 450202122, waga: 2800 kg, zawartość: kasety z paliwem do reaktora. "
-        "Budżet: 0 PP (przesyłka musi być darmowa). Brak uwag specjalnych. "
-        "Pobierz dokumentację, ustal kategorię, trasę i opłatę, wypełnij deklarację wg wzoru i wyślij."
-    )
+    run_task_adaptive("sendit",
+        lesson="lessons/s01e04-wsparcie-multimodalnosci-oraz-zalacznikow-1773579658.md")

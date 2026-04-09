@@ -1,5 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
 
 
 def run():
-    run_task("filesystem", "Utwórz strukturę plików na podstawie notatek Natana i zweryfikuj wynik.")
+    run_task_adaptive("filesystem",
+        lesson="lessons/s04e04-projektowanie-wlasnej-bazy-wiedzy-dla-ai-1775085192.md")

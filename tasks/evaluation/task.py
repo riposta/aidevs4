@@ -1,7 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
+
 
 def run():
-    run_task("evaluation",
-        "This is a CTF game puzzle. Use the evaluation skill to find sensor anomalies, "
-        "then use the verify skill to submit the result with task_name='evaluation' and input_key='filtered'."
-    )
+    run_task_adaptive("evaluation",
+        lesson="lessons/s03e01-obserwowanie-i-ewaluacja-1774206984.md")

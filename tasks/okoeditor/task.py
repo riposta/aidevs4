@@ -1,4 +1,6 @@
-from core.agent import run_task
+from core.agent import run_task_adaptive
+
 
 def run():
-    run_task("okoeditor", "Wykonaj wszystkie wymagane zmiany w systemie OKO i uruchom akcję done aby odebrać flagę.")
+    run_task_adaptive("okoeditor",
+        lesson="lessons/s04e01-wdrozenia-rozwiazan-ai-1774824465.md")

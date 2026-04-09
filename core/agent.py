@@ -443,6 +443,54 @@ def load_agents(*names: str) -> dict[str, Agent]:
     return agents
 
 
+# Lesson-to-task mapping (lesson prefix → task name)
+LESSON_TASK_MAP = {
+    "s01e01": "nazwa-zadania",
+    "s01e02": "findhim",
+    "s01e03": "proxy",
+    "s01e04": "sendit",
+    "s01e05": "railway",
+    "s02e01": "categorize",
+    "s02e02": "electricity",
+    "s02e03": "failure",
+    "s02e04": "mailbox",
+    "s02e05": "drone",
+    "s03e01": "evaluation",
+    "s03e02": "firmware",
+    "s03e03": "reactor",
+    "s03e04": "negotiations",
+    "s03e05": "savethem",
+    "s04e01": "okoeditor",
+    "s04e02": "windpower",
+    "s04e03": "domatowo",
+    "s04e04": "filesystem",
+    "s04e05": "foodwarehouse",
+    "s05e01": "radiomonitoring",
+    "s05e02": "phonecall",
+    "s05e03": "shellaccess",
+    "s05e04": "goingthere",
+}
+
+# Reverse map: task name → lesson prefix
+_TASK_LESSON_MAP = {v: k for k, v in LESSON_TASK_MAP.items()}
+
+
+def _find_lesson(task_name: str) -> Path | None:
+    """Find lesson file for a task name by searching lessons/ directory."""
+    lessons_dir = PROJECT_ROOT / "lessons"
+    if not lessons_dir.exists():
+        return None
+    prefix = _TASK_LESSON_MAP.get(task_name)
+    if prefix:
+        for p in lessons_dir.glob(f"{prefix}-*.md"):
+            return p
+    # Fallback: search all lesson files for task name in content
+    for p in sorted(lessons_dir.glob("*.md")):
+        if f'"task": "{task_name}"' in p.read_text()[:5000]:
+            return p
+    return None
+
+
 def run_task(task_name: str, instruction: str, max_iterations: int = 30) -> str:
     """Load universal_solver, run it with task-specific instruction."""
     agent = get_agent("universal_solver")
@@ -452,8 +500,15 @@ def run_task(task_name: str, instruction: str, max_iterations: int = 30) -> str:
     return agent.run(full_instruction)
 
 
-def run_task_adaptive(task_name: str, max_attempts: int = 3, max_iterations: int = 30) -> str:
-    """Run task with adaptive agent: reads task.md, uses memory, reflects on failures."""
+def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, max_iterations: int = 30) -> str:
+    """Run task with adaptive agent: reads lesson file, uses memory, reflects on failures.
+
+    Args:
+        task_name: Task identifier (e.g. 'railway')
+        lesson: Path to lesson .md file. If empty, searches lessons/ directory.
+        max_attempts: Number of retry attempts with reflection
+        max_iterations: Max ReAct iterations per attempt
+    """
     from core.memory import (
         build_tool_catalog, load_reflections, format_reflections,
         load_learned_skill, save_learned_skill, generate_learned_skill,
@@ -461,11 +516,16 @@ def run_task_adaptive(task_name: str, max_attempts: int = 3, max_iterations: int
     )
     import time
 
-    # Read task description from task.md
-    task_md_path = PROJECT_ROOT / "tasks" / task_name / "task.md"
-    if not task_md_path.exists():
-        raise FileNotFoundError(f"Task description not found: {task_md_path}")
-    task_description = task_md_path.read_text()
+    # Read lesson file
+    if lesson:
+        lesson_path = PROJECT_ROOT / lesson
+    else:
+        # Auto-find lesson in lessons/ directory
+        lesson_path = _find_lesson(task_name)
+    if not lesson_path or not lesson_path.exists():
+        raise FileNotFoundError(f"Lesson file not found for task '{task_name}'. Provide lesson= parameter.")
+    task_description = lesson_path.read_text()
+    log.info("[adaptive] Reading lesson: %s (%d chars)", lesson_path.name, len(task_description))
 
     # Load memory
     reflections = load_reflections(task_name)
