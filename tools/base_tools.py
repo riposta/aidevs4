@@ -50,7 +50,7 @@ def call_task_api(task: str, answer: str) -> str:
 
 
 def fetch_url(url: str) -> str:
-    """Fetch content from any URL. Returns text for text content, base64:content_type:data for binary. Max 50KB text."""
+    """Fetch content from any URL. Returns text (max 50KB) or for binary: saves to store and returns metadata. For large/binary files, use run_python with urllib instead."""
     log.info("Fetching: %s", url)
     try:
         resp = http.get(url)
@@ -58,6 +58,7 @@ def fetch_url(url: str) -> str:
         return f"HTTP error: {e}"
 
     content_type = resp.headers.get("content-type", "")
+    content_length = len(resp.content)
 
     if "text" in content_type or "json" in content_type or "csv" in content_type or "xml" in content_type:
         text = resp.text[:50000]
@@ -65,10 +66,11 @@ def fetch_url(url: str) -> str:
             text += f"\n... (truncated, total {len(resp.text)} bytes)"
         return text
 
-    # Binary content — return base64
-    data = resp.content[:1_000_000]
-    b64 = base64.b64encode(data).decode()
-    return f"base64:{content_type}:{b64}"
+    # Binary content — save to store, return metadata only (don't bloat context)
+    b64 = base64.b64encode(resp.content).decode()
+    store_key = f"_file_{url.split('/')[-1]}"
+    store_put(store_key, b64)
+    return f"Binary file downloaded: {content_type}, {content_length} bytes, saved to store key '{store_key}'. Use run_python to process it: data = base64.b64decode(_store_get('{store_key}'))"
 
 
 def put_store(key: str, value: str) -> str:
