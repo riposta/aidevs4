@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}AIDevs4 // {{ filename }}{% endblock %}
+
+{% block body %}
+<div class="lesson-header">
+    <a href="/" class="back-link">&larr; dashboard</a>
+    <h2>{{ filename }}</h2>
+    <div class="lesson-actions">
+        {% if task_name %}
+            <span class="tag tag-model">task: {{ task_name }}</span>
+            {% if has_log %}
+                <a href="/log/{{ task_name }}" class="btn-icon btn-log">log</a>
+            {% endif %}
+            {% if has_result %}
+                <a href="/result/{{ task_name }}" class="btn-icon btn-result">result</a>
+            {% endif %}
+            <a href="/run/{{ task_name }}" class="btn-icon btn-run">run</a>
+        {% else %}
+            <span class="tag" style="color:var(--text-dim)">no task detected</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="lesson-content" id="lessonContent">
+    <pre class="lesson-markdown">{{ content }}</pre>
+</div>
+
+<style>
+.lesson-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid #333;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.lesson-header h2 {
+    font-size: 14px;
+    margin: 0;
+    flex: 1;
+    min-width: 200px;
+}
+.lesson-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.back-link {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 12px;
+}
+.back-link:hover { color: var(--green); }
+.lesson-content {
+    background: #1a1a2e;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 20px;
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+.lesson-markdown {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 12px;
+    line-height: 1.6;
+    color: #c0c0c0;
+    margin: 0;
+    font-family: inherit;
+}
+</style>
+{% endblock %}

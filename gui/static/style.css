@@ -308,7 +308,7 @@ a:hover { color: var(--green); text-shadow: 0 0 8px var(--green); }
     gap: 16px;
     padding: 16px;
     height: calc(100vh - 49px - 85px);
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: auto 1fr 1fr;
     overflow: hidden;
 }
 
@@ -329,6 +329,11 @@ a:hover { color: var(--green); text-shadow: 0 0 8px var(--green); }
     flex-direction: column;
     overflow: hidden;
     min-height: 0;
+}
+
+.section-wide {
+    grid-column: 1 / -1;
+    max-height: 280px;
 }
 
 .item-list {

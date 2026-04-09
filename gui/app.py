@@ -13,6 +13,7 @@ TOOLS_DIR = PROJECT_ROOT / "tools"
 TASKS_DIR = PROJECT_ROOT / "tasks"
 RESULTS_DIR = PROJECT_ROOT / "results"
 LOGS_DIR = PROJECT_ROOT / "log"
+LESSONS_DIR = PROJECT_ROOT / "lessons"
 
 app = Flask(__name__)
 app.jinja_env.policies["json.dumps_kwargs"] = {"ensure_ascii": False}
@@ -89,6 +90,44 @@ def _scan_results() -> dict[str, dict]:
     return results
 
 
+LESSON_TASK_MAP = {
+    "s01e01": "nazwa-zadania", "s01e02": "findhim", "s01e03": "proxy",
+    "s01e04": "sendit", "s01e05": "railway", "s02e01": "categorize",
+    "s02e02": "electricity", "s02e03": "failure", "s02e04": "mailbox",
+    "s02e05": "drone", "s03e01": "evaluation", "s03e02": "firmware",
+    "s03e03": "reactor", "s03e04": "negotiations", "s03e05": "savethem",
+    "s04e01": "okoeditor", "s04e02": "windpower", "s04e03": "domatowo",
+    "s04e04": "filesystem", "s04e05": "foodwarehouse",
+    "s05e01": "radiomonitoring", "s05e02": "phonecall",
+    "s05e03": "shellaccess", "s05e04": "goingthere",
+}
+
+
+def _scan_lessons() -> list[dict]:
+    """Scan lessons/ directory and extract lesson metadata."""
+    lessons = []
+    if not LESSONS_DIR.exists():
+        return lessons
+    for p in sorted(LESSONS_DIR.glob("*.md")):
+        meta, body = _parse_frontmatter(p.read_text()[:2000])
+        prefix = p.stem[:6]  # e.g. "s01e01"
+        task_name = LESSON_TASK_MAP.get(prefix, "")
+        season = prefix[:3]  # "s01"
+        episode = prefix[3:]  # "e01"
+        title = meta.get("title", p.stem.split("-", 1)[1].rsplit("-", 1)[0].replace("-", " ") if "-" in p.stem else p.stem)
+        lessons.append({
+            "file": p.name,
+            "stem": p.stem,
+            "prefix": prefix,
+            "season": season,
+            "episode": episode,
+            "title": title,
+            "task_name": task_name,
+            "path": str(p.relative_to(PROJECT_ROOT)),
+        })
+    return lessons
+
+
 def _scan_tools() -> list[dict]:
     tools = []
     if not TOOLS_DIR.exists():
@@ -121,13 +160,17 @@ def dashboard():
     tasks = _scan_tasks()
     tools = _scan_tools()
     results = _scan_results()
+    lessons = _scan_lessons()
     solved = {name for name, data in results.items()
               if data.get("response", {}).get("code", -1) == 0}
     logs = {p.stem for p in LOGS_DIR.glob("*.log")} if LOGS_DIR.exists() else set()
     total_fns = sum(len(t["functions"]) for t in tools)
+    # Count learned skills in memory/
+    memory_dir = PROJECT_ROOT / "memory" / "skills"
+    learned = {p.stem for p in memory_dir.glob("*.md")} if memory_dir.exists() else set()
     return render_template("dashboard.html", logs=logs, solved=solved, total_fns=total_fns,
                            agents=agents, skills=skills, tasks=tasks, tools=tools,
-                           results=results)
+                           results=results, lessons=lessons, learned=learned)
 
 
 @app.route("/edit/<path:filepath>")
@@ -275,6 +318,21 @@ def log_page(task_name):
         return "No log found", 404
     content = log_path.read_text()
     return render_template("log.html", task_name=task_name, content=content)
+
+
+@app.route("/lesson/<path:filename>")
+def lesson_view(filename):
+    """View a lesson with rendered markdown and run button."""
+    full = LESSONS_DIR / filename
+    if not full.exists():
+        return "Lesson not found", 404
+    content = full.read_text()
+    prefix = full.stem[:6]
+    task_name = LESSON_TASK_MAP.get(prefix, "")
+    has_result = (RESULTS_DIR / f"{task_name}.json").exists() if task_name else False
+    has_log = (LOGS_DIR / f"{task_name}.log").exists() if task_name else False
+    return render_template("lesson.html", filename=filename, content=content,
+                           task_name=task_name, has_result=has_result, has_log=has_log)
 
 
 @app.route("/run/<task_name>")
