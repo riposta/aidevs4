@@ -24,18 +24,13 @@
         <div class="cpanel-value">{{ tools|length }}<span class="cpanel-sub">/{{ total_fns }}fn</span></div>
         <div class="cpanel-bar"><div class="cpanel-bar-fill cpanel-bar-yellow" style="width:{{ [total_fns * 3, 100]|min }}%"></div></div>
     </div>
-    <div class="cpanel-stat">
-        <div class="cpanel-label">TASKS</div>
-        <div class="cpanel-value">{{ tasks|length }}</div>
-        <div class="cpanel-bar"><div class="cpanel-bar-fill cpanel-bar-green" style="width:{{ [tasks|length * 5, 100]|min }}%"></div></div>
-    </div>
     <div class="cpanel-stat cpanel-stat-main">
         <div class="cpanel-label">SOLVED</div>
-        <div class="cpanel-value cpanel-solved">{{ solved|length }}<span class="cpanel-sub">/{{ tasks|length }}</span></div>
+        <div class="cpanel-value cpanel-solved">{{ solved|length }}<span class="cpanel-sub">/{{ lessons|length }}</span></div>
         <div class="cpanel-ring">
             <svg viewBox="0 0 36 36">
                 <path class="cpanel-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                <path class="cpanel-ring-fill" stroke-dasharray="{{ (solved|length / [tasks|length, 1]|max * 100)|round }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path class="cpanel-ring-fill" stroke-dasharray="{{ (solved|length / [lessons|length, 1]|max * 100)|round }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
             </svg>
         </div>
     </div>
@@ -131,36 +126,6 @@
             </li>
         {% else %}
             <li class="empty">no skills found</li>
-        {% endfor %}
-        </ul>
-    </div>
-
-    <!-- Tasks -->
-    <div class="section">
-        <div class="section-header">
-            Tasks <span class="count">{{ tasks|length }}</span>
-            <a href="/new/task" class="btn-new">+ new</a>
-        </div>
-        <ul class="item-list">
-        {% for t in tasks %}
-            <li class="item">
-                <a href="/edit/{{ t.path }}" class="item-name">{{ t.name }}</a>
-                <span class="item-desc">{{ t.path }}</span>
-                {% if t.name in results and extract_flag(results[t.name]) %}
-                    <span class="tag tag-flag">solved</span>
-                {% endif %}
-                <div class="item-actions">
-                    {% if t.name in logs %}
-                        <a href="/log/{{ t.name }}" class="btn-icon btn-log">log</a>
-                    {% endif %}
-                    {% if t.name in results %}
-                        <a href="/result/{{ t.name }}" class="btn-icon btn-result">result</a>
-                    {% endif %}
-                    <a href="/run/{{ t.name }}" class="btn-icon btn-run">run</a>
-                </div>
-            </li>
-        {% else %}
-            <li class="empty">no tasks found</li>
         {% endfor %}
         </ul>
     </div>

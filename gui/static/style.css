@@ -304,11 +304,11 @@ a:hover { color: var(--green); text-shadow: 0 0 8px var(--green); }
 /* Dashboard */
 .dashboard {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 16px;
     padding: 16px;
     height: calc(100vh - 49px - 85px);
-    grid-template-rows: auto 1fr 1fr;
+    grid-template-rows: auto 1fr;
     overflow: hidden;
 }
 

@@ -157,7 +157,6 @@ def _scan_tools() -> list[dict]:
 def dashboard():
     agents = _scan_items(AGENTS_DIR, ".md")
     skills = _scan_items(SKILLS_DIR, ".md")
-    tasks = _scan_tasks()
     tools = _scan_tools()
     results = _scan_results()
     lessons = _scan_lessons()
@@ -165,11 +164,10 @@ def dashboard():
               if data.get("response", {}).get("code", -1) == 0}
     logs = {p.stem for p in LOGS_DIR.glob("*.log")} if LOGS_DIR.exists() else set()
     total_fns = sum(len(t["functions"]) for t in tools)
-    # Count learned skills in memory/
     memory_dir = PROJECT_ROOT / "memory" / "skills"
     learned = {p.stem for p in memory_dir.glob("*.md")} if memory_dir.exists() else set()
     return render_template("dashboard.html", logs=logs, solved=solved, total_fns=total_fns,
-                           agents=agents, skills=skills, tasks=tasks, tools=tools,
+                           agents=agents, skills=skills, tools=tools,
                            results=results, lessons=lessons, learned=learned)
 
 
