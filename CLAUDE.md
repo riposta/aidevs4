@@ -180,8 +180,8 @@ Common keys: `candidates`, `tagged`, `filtered` (default key read by verify skil
 | `universal_solver` | agent | Universal task solver — handles all tasks via lazy skill loading |
 | `verify` | skill | `submit_answer(task_name, input_key)` — submits answer + saves result |
 | `verify` | skill | `load_result(task_name, output_key)` — loads previous task's answer into store |
-| `compactor` | agent | Context compaction (gpt-4o-mini) |
-| `summarizer` | agent | Data summarization (gpt-4o-mini) |
+| `compactor` | agent | Context compaction (gpt-5.4-mini) |
+| `summarizer` | agent | Data summarization (gpt-5.4-mini) |
 
 ## Event Logging (GUI Bubbles)
 

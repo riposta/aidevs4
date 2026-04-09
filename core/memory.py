@@ -95,7 +95,7 @@ def format_reflections(reflections: list) -> str:
 
 def generate_reflection(task_name: str, instruction: str,
                        trajectory: str, success: bool, attempt: int) -> Reflection:
-    """Use gpt-4o-mini to generate structured reflection from attempt trajectory."""
+    """Use gpt-5-mini to generate structured reflection from attempt trajectory."""
     client = OpenAI(api_key=OPENAI_API_KEY)
 
     prompt = f"""Analyze this task attempt and create a structured reflection.
@@ -111,7 +111,7 @@ Reply with JSON:
 {{"tools_used": ["tool1", "tool2"], "summary": "what was tried in 1-2 sentences", "error": "error message if failed, empty string if success", "lesson": "what to do differently next time, or what worked well"}}"""
 
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"},
     )
@@ -146,7 +146,7 @@ def load_learned_skill(task_name: str) -> Optional[str]:
 
 def generate_learned_skill(task_name: str, instruction: str,
                           trajectory: str) -> str:
-    """Use gpt-4o-mini to convert successful trajectory into a reusable skill."""
+    """Use gpt-5.4-mini to convert successful trajectory into a reusable skill."""
     client = OpenAI(api_key=OPENAI_API_KEY)
 
     prompt = f"""Convert this successful task execution into a reusable step-by-step skill document.
@@ -172,7 +172,7 @@ Include EXACT parameter values, store keys, and expected outputs from the trajec
 The goal is that an agent following these instructions will solve the task identically."""
 
     resp = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-5-mini",
         messages=[{"role": "user", "content": prompt}],
     )
     return resp.choices[0].message.content

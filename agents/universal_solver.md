@@ -1,7 +1,7 @@
 ---
 name: universal_solver
 description: Universal task solver — activates skill matching task name, follows instructions, submits answer
-model: gpt-5-nano
+model: gpt-5.4-mini
 skills: verify
 ---
 

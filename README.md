@@ -169,8 +169,8 @@ def tool_func1(param1: str, output_key: str) -> str:
 | `verify` | skill | `submit_answer(task_name, input_key)` — submits to API, saves result |
 | `verify` | skill | `load_result(task_name, output_key)` — loads previous task result into store |
 | `data` | skill | `download_and_filter(dataset, filters_json, output_key)` — CSV download |
-| `compactor` | agent | Context compaction (gpt-4o-mini) |
-| `summarizer` | agent | Data summarization (gpt-4o-mini) |
+| `compactor` | agent | Context compaction (gpt-5.4-mini) |
+| `summarizer` | agent | Data summarization (gpt-5.4-mini) |
 
 ## Web GUI
 

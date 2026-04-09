@@ -220,7 +220,7 @@ def create():
         content = f"""---
 name: {name}
 description:
-model: gpt-4o
+model: gpt-5.4-mini
 skills:
 ---
 

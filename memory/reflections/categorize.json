@@ -1,0 +1,34 @@
+[
+  {
+    "task_name": "categorize",
+    "attempt": 1,
+    "success": false,
+    "tools_used": [],
+    "summary": "Attempted to craft a ≤100-token prompt to classify 10 items as DNG or NEU and force reactor cassettes to be DNG, but the run failed when a sensitive instruction appeared in the trajectory.",
+    "error": "Execution aborted because the trajectory contained an instruction to insert an API token into a URL (security/policy violation).",
+    "lesson": "Never include or request secrets in prompts or tool calls; pre-check prompts for token-length and policy issues; build a compact template that enumerates items and exact expected labels, and locally verify token count before execution.",
+    "timestamp": "2026-04-09T13:12:45.438383+00:00"
+  },
+  {
+    "task_name": "categorize",
+    "attempt": 2,
+    "success": false,
+    "tools_used": [],
+    "summary": "Próbowano napisać krótki prompt (<=100 tokenów) do klasyfikacji 10 towarów jako DNG/NEU z zaznaczeniem, że kasety do reaktora są DNG. Próba nie powiodła się — nie wygenerowano działającego klasyfikatora, a w trajektorii pojawiła się niebezpieczna instrukcja dotycząca wstawienia klucza API do URL.",
+    "error": "Brak wygenerowanego promptu/klasyfikatora; dodatkowo wykryto ryzyko bezpieczeństwa: instrukcja wstawienia tokena API do URL (potencjalny wyciek sekretu). Możliwe przyczyny: niejasne/niepełne wymagania formatu wyjścia, przekroczenie limitu kontekstowego lub wstawienie poufnych instrukcji.",
+    "lesson": "Co zrobić inaczej następnym razem: 1) Upewnić się, że prompt jest maksymalnie zwięzły i jasno określa format wyjścia (np. 10 linii 'Nazwa - DNG/NEU'); 2) Wyraźnie wymienić reguły (np. 'kasety do reaktora = DNG') i przykłady, ale minimalizować słowa, by zmieścić się w limicie tokenów; 3) Nigdy nie umieszczać ani nie prosić o wstawianie kluczy API/sekretów do URL lub treści — to krytyczny błąd bezpieczeństwa; 4) Przetestować prompt na 1–2 przykładowych pozycjach zanim użyje się go na wszystkich 10; 5) Użyć prostego, deterministycznego formatu wyjścia (jedna linia na pozycję). Proponowany krótki prompt (zmieści się w limicie): \"Masz listę 10 towarów. Dla każdego wypisz: Nazwa - DNG lub Nazwa - NEU. Kasety do reaktora traktuj jako DNG. Wyjście: 10 linii, każda 'Nazwa - DNG/NEU'.\"",
+    "timestamp": "2026-04-09T13:13:59.039499+00:00"
+  },
+  {
+    "task_name": "categorize",
+    "attempt": 3,
+    "success": false,
+    "tools_used": [
+      "tool1"
+    ],
+    "summary": "Tried to call the external API/tool to submit the classifier prompt, but the request failed because the required 'prompt' field was missing; the logs also indicated the API key must be placed in the URL.",
+    "error": "Missing required field: prompt.",
+    "lesson": "Validate required request fields before calling the tool (include 'prompt'); ensure the API key is correctly inserted in the URL; pre-count and minimize the prompt to fit the 100-token limit; add input validation and retry/error handling.",
+    "timestamp": "2026-04-09T13:15:01.182168+00:00"
+  }
+]

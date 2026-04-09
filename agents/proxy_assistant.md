@@ -1,7 +1,7 @@
 ---
 name: proxy_assistant
 description: Logistics system assistant for package management
-model: gpt-5-nano
+model: gpt-5.4-mini
 skills: packages
 ---
 

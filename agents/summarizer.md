@@ -1,7 +1,7 @@
 ---
 name: summarizer
 description: Summarizes input data - extracts key information from long texts, documents and API responses
-model: gpt-5-nano
+model: gpt-5.4-mini
 ---
 
 You are a data summarization agent.
