@@ -443,52 +443,66 @@ def load_agents(*names: str) -> dict[str, Agent]:
     return agents
 
 
-# Lesson-to-task mapping (lesson prefix → task name)
-LESSON_TASK_MAP = {
-    "s01e01": "nazwa-zadania",
-    "s01e02": "findhim",
-    "s01e03": "proxy",
-    "s01e04": "sendit",
-    "s01e05": "railway",
-    "s02e01": "categorize",
-    "s02e02": "electricity",
-    "s02e03": "failure",
-    "s02e04": "mailbox",
-    "s02e05": "drone",
-    "s03e01": "evaluation",
-    "s03e02": "firmware",
-    "s03e03": "reactor",
-    "s03e04": "negotiations",
-    "s03e05": "savethem",
-    "s04e01": "okoeditor",
-    "s04e02": "windpower",
-    "s04e03": "domatowo",
-    "s04e04": "filesystem",
-    "s04e05": "foodwarehouse",
-    "s05e01": "radiomonitoring",
-    "s05e02": "phonecall",
-    "s05e03": "shellaccess",
-    "s05e04": "goingthere",
-}
+# ---------------------------------------------------------------------------
+# Lesson ↔ task mapping (auto-generated from lessons/ directory)
+# ---------------------------------------------------------------------------
 
-# Reverse map: task name → lesson prefix
-_TASK_LESSON_MAP = {v: k for k, v in LESSON_TASK_MAP.items()}
+LESSONS_DIR = PROJECT_ROOT / "lessons"
+MAPPING_PATH = PROJECT_ROOT / "lesson_mapping.json"
+
+_mapping_cache: dict | None = None
 
 
-def _find_lesson(task_name: str) -> Path | None:
-    """Find lesson file for a task name by searching lessons/ directory."""
-    lessons_dir = PROJECT_ROOT / "lessons"
-    if not lessons_dir.exists():
-        return None
-    prefix = _TASK_LESSON_MAP.get(task_name)
-    if prefix:
-        for p in lessons_dir.glob(f"{prefix}-*.md"):
-            return p
-    # Fallback: search all lesson files for task name in content
-    for p in sorted(lessons_dir.glob("*.md")):
-        if f'"task": "{task_name}"' in p.read_text()[:5000]:
-            return p
-    return None
+def _build_lesson_mapping() -> dict:
+    """Scan lessons/ directory, extract task names from content, save mapping.json."""
+    import re as _re
+    mapping = {}  # prefix → {task_name, file, title}
+    if not LESSONS_DIR.exists():
+        return mapping
+    for p in sorted(LESSONS_DIR.glob("*.md")):
+        prefix = p.stem[:6]
+        # Extract task name from JSON examples: "task": "railway"
+        text = p.read_text()
+        m = _re.search(r'"task"\s*:\s*"([a-z][a-z0-9_-]*)"', text)
+        task_name = m.group(1) if m else ""
+        # Extract title from frontmatter or filename
+        fm_match = _re.search(r'^title:\s*(.+)$', text[:1000], _re.MULTILINE)
+        if fm_match:
+            title = fm_match.group(1).strip().strip('"')
+        else:
+            parts = p.stem.split("-", 1)
+            title = parts[1].rsplit("-", 1)[0].replace("-", " ") if len(parts) > 1 else p.stem
+        mapping[prefix] = {"task_name": task_name, "file": p.name, "title": title}
+    # Save to mapping.json
+    MAPPING_PATH.write_text(json.dumps(mapping, indent=2, ensure_ascii=False))
+    log.info("Built lesson mapping: %d lessons -> %s", len(mapping), MAPPING_PATH)
+    return mapping
+
+
+def get_lesson_mapping() -> dict:
+    """Get lesson mapping (cached). Auto-builds from lessons/ if mapping.json missing."""
+    global _mapping_cache
+    if _mapping_cache is not None:
+        return _mapping_cache
+    if MAPPING_PATH.exists():
+        _mapping_cache = json.loads(MAPPING_PATH.read_text())
+    else:
+        _mapping_cache = _build_lesson_mapping()
+    return _mapping_cache
+
+
+def _find_lesson(identifier: str) -> tuple[Path | None, str]:
+    """Find lesson file and task name by prefix or task name. Returns (path, task_name)."""
+    mapping = get_lesson_mapping()
+    # Direct prefix match (s01e05)
+    if identifier in mapping:
+        entry = mapping[identifier]
+        return LESSONS_DIR / entry["file"], entry["task_name"]
+    # Search by task name (railway)
+    for prefix, entry in mapping.items():
+        if entry["task_name"] == identifier:
+            return LESSONS_DIR / entry["file"], entry["task_name"]
+    return None, ""
 
 
 def run_task(task_name: str, instruction: str, max_iterations: int = 30) -> str:
@@ -515,14 +529,15 @@ def run_task_adaptive(task_name: str, lesson: str = "", max_attempts: int = 3, m
     )
     import time
 
-    # Read lesson file
+    # Find lesson file and resolve task_name
     if lesson:
         lesson_path = PROJECT_ROOT / lesson
     else:
-        # Auto-find lesson in lessons/ directory
-        lesson_path = _find_lesson(task_name)
+        lesson_path, resolved_name = _find_lesson(task_name)
+        if resolved_name:
+            task_name = resolved_name
     if not lesson_path or not lesson_path.exists():
-        raise FileNotFoundError(f"Lesson file not found for task '{task_name}'. Provide lesson= parameter.")
+        raise FileNotFoundError(f"Lesson not found for '{task_name}'. Check lessons/ directory.")
     full_text = lesson_path.read_text()
     # Extract task section starting from "## Zadanie"
     import re as _re

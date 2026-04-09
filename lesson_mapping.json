@@ -1,0 +1,122 @@
+{
+  "s01e01": {
+    "task_name": "nazwa-zadania",
+    "file": "s01e01-programowanie-interakcji-z-modelem-jezykowym-1773230257.md",
+    "title": "Programowanie interakcji z modelem językowym"
+  },
+  "s01e02": {
+    "task_name": "findhim",
+    "file": "s01e02-techniki-laczenia-modelu-z-narzedziami-1773132164.md",
+    "title": "Techniki łączenia modelu z narzędziami"
+  },
+  "s01e03": {
+    "task_name": "proxy",
+    "file": "s01e03-projektowanie-api-dla-efektywnej-pracy-z-modelem-1773213233.md",
+    "title": "Projektowanie API dla efektywnej pracy z modelem"
+  },
+  "s01e04": {
+    "task_name": "sendit",
+    "file": "s01e04-wsparcie-multimodalnosci-oraz-zalacznikow-1773579658.md",
+    "title": "Wsparcie multimodalności oraz załączników"
+  },
+  "s01e05": {
+    "task_name": "railway",
+    "file": "s01e05-zarzadzanie-jawnymi-oraz-niejawnymi-limitami-modeli-1773377197.md",
+    "title": "Zarządzanie jawnymi oraz niejawnymi limitami modeli"
+  },
+  "s02e01": {
+    "task_name": "categorize",
+    "file": "s02e01-zarzadzanie-kontekstem-w-konwersacji-1773691475.md",
+    "title": "S02E01 — Zarządzanie kontekstem w konwersacji"
+  },
+  "s02e02": {
+    "task_name": "electricity",
+    "file": "s02e02-zewnetrzny-kontekst-narzedzi-i-dokumentow-1773818117.md",
+    "title": "S02E02 — Zewnętrzny kontekst narzędzi i dokumentów"
+  },
+  "s02e03": {
+    "task_name": "failure",
+    "file": "s02e03-dokumenty-oraz-pamiec-dlugoterminowa-jako-narzedzia-1773813001.md",
+    "title": "S02E03 — Dokumenty oraz pamięć długoterminowa jako narzędzia"
+  },
+  "s02e04": {
+    "task_name": "mailbox",
+    "file": "s02e04-organizowanie-kontekstu-dla-wielu-watkow-1773922583.md",
+    "title": "S02E04 — Organizowanie kontekstu dla wielu wątków"
+  },
+  "s02e05": {
+    "task_name": "drone",
+    "file": "s02e05-projektowanie-agentow-1773962356.md",
+    "title": "S02E05 — Projektowanie agentów"
+  },
+  "s03e01": {
+    "task_name": "evaluation",
+    "file": "s03e01-obserwowanie-i-ewaluacja-1774206984.md",
+    "title": "S03E01 — Obserwowanie i ewaluacja"
+  },
+  "s03e02": {
+    "task_name": "firmware",
+    "file": "s03e02-ograniczenia-modeli-na-etapie-zalozen-projektu-1774278041.md",
+    "title": "S03E02 — Ograniczenia modeli na etapie założeń projektu"
+  },
+  "s03e03": {
+    "task_name": "reactor",
+    "file": "s03e03-kontekstowy-feedback-wspierajacy-skutecznosc-agentow-1774391034.md",
+    "title": "S03E03 — Kontekstowy feedback wspierający skuteczność agentów"
+  },
+  "s03e04": {
+    "task_name": "negotiations",
+    "file": "s03e04-budowanie-narzedzi-na-podstawie-danych-testowych-1774477151.md",
+    "title": "S03E04 — Budowanie narzędzi na podstawie danych testowych"
+  },
+  "s03e05": {
+    "task_name": "savethem",
+    "file": "s03e05-niedeterministyczna-natura-modeli-jako-przewaga-1774562727.md",
+    "title": "S03E05 — Niedeterministyczna natura modeli jako przewaga"
+  },
+  "s04e01": {
+    "task_name": "okoeditor",
+    "file": "s04e01-wdrozenia-rozwiazan-ai-1774824465.md",
+    "title": "S04E01 — Wdrożenia rozwiązań AI"
+  },
+  "s04e02": {
+    "task_name": "windpower",
+    "file": "s04e02-aktywna-wspolpraca-z-ai-1774908365.md",
+    "title": "S04E02 — Aktywna współpraca z AI"
+  },
+  "s04e03": {
+    "task_name": "domatowo",
+    "file": "s04e03-kontekstowa-wspolpraca-z-ai-1774999647.md",
+    "title": "S04E03 — Kontekstowa współpraca z AI"
+  },
+  "s04e04": {
+    "task_name": "filesystem",
+    "file": "s04e04-projektowanie-wlasnej-bazy-wiedzy-dla-ai-1775085192.md",
+    "title": "S04E04 — Projektowanie własnej bazy wiedzy dla AI"
+  },
+  "s04e05": {
+    "task_name": "foodwarehouse",
+    "file": "s04e05-projektowanie-rozwiazan-wewnatrzfirmowych-1775189135.md",
+    "title": "S04E05 — Projektowanie rozwiązań wewnątrzfirmowych"
+  },
+  "s05e01": {
+    "task_name": "radiomonitoring",
+    "file": "s05e01-architektura-1775412680.md",
+    "title": "S05E01 — Architektura"
+  },
+  "s05e02": {
+    "task_name": "phonecall",
+    "file": "s05e02-zestaw-narzedzi-1775625284.md",
+    "title": "S05E02 — Zestaw narzędzi"
+  },
+  "s05e03": {
+    "task_name": "shellaccess",
+    "file": "s05e03-rozwoj-funkcjonalnosci-1775596919.md",
+    "title": "S05E03 — Rozwój funkcjonalności"
+  },
+  "s05e04": {
+    "task_name": "goingthere",
+    "file": "s05e04-produkcja-1775717856.md",
+    "title": "S05E04 — Produkcja"
+  }
+}

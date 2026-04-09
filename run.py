@@ -30,26 +30,19 @@ def main():
 
     identifier = sys.argv[1]
 
-    from core.agent import LESSON_TASK_MAP, _find_lesson, run_task_adaptive
+    from core.agent import _find_lesson, run_task_adaptive
 
-    # Resolve identifier → task_name + lesson_path
-    if identifier in LESSON_TASK_MAP:
-        # It's a lesson prefix like "s01e05"
-        task_name = LESSON_TASK_MAP[identifier]
-        lesson_path = _find_lesson(task_name)
-    else:
-        # Assume it's a task name like "railway"
-        task_name = identifier
-        lesson_path = _find_lesson(task_name)
+    # Resolve identifier → lesson_path + task_name
+    lesson_path, task_name = _find_lesson(identifier)
 
     if not lesson_path or not lesson_path.exists():
-        # Fallback: try old tasks/ system for proxy and other special tasks
+        # Fallback: try old tasks/ system for proxy and other special cases
         log.warning("No lesson found for '%s', trying legacy tasks/ system", identifier)
         from core.event_log import init as init_event_log, close as close_event_log
-        init_event_log(task_name)
+        init_event_log(identifier)
         try:
             from tasks import run_task
-            run_task(task_name)
+            run_task(identifier)
         finally:
             close_event_log()
         return

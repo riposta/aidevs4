@@ -90,37 +90,29 @@ def _scan_results() -> dict[str, dict]:
     return results
 
 
-LESSON_TASK_MAP = {
-    "s01e01": "nazwa-zadania", "s01e02": "findhim", "s01e03": "proxy",
-    "s01e04": "sendit", "s01e05": "railway", "s02e01": "categorize",
-    "s02e02": "electricity", "s02e03": "failure", "s02e04": "mailbox",
-    "s02e05": "drone", "s03e01": "evaluation", "s03e02": "firmware",
-    "s03e03": "reactor", "s03e04": "negotiations", "s03e05": "savethem",
-    "s04e01": "okoeditor", "s04e02": "windpower", "s04e03": "domatowo",
-    "s04e04": "filesystem", "s04e05": "foodwarehouse",
-    "s05e01": "radiomonitoring", "s05e02": "phonecall",
-    "s05e03": "shellaccess", "s05e04": "goingthere",
-}
+def _get_lesson_mapping() -> dict:
+    """Load lesson mapping from core.agent (auto-generated from lessons/)."""
+    from core.agent import get_lesson_mapping
+    return get_lesson_mapping()
 
 
 def _scan_lessons() -> list[dict]:
-    """Scan lessons/ directory and extract lesson metadata."""
+    """Scan lessons/ directory using auto-generated mapping."""
     lessons = []
     if not LESSONS_DIR.exists():
         return lessons
+    mapping = _get_lesson_mapping()
     for p in sorted(LESSONS_DIR.glob("*.md")):
-        meta, body = _parse_frontmatter(p.read_text()[:2000])
-        prefix = p.stem[:6]  # e.g. "s01e01"
-        task_name = LESSON_TASK_MAP.get(prefix, "")
-        season = prefix[:3]  # "s01"
-        episode = prefix[3:]  # "e01"
-        title = meta.get("title", p.stem.split("-", 1)[1].rsplit("-", 1)[0].replace("-", " ") if "-" in p.stem else p.stem)
+        if p.name == "mapping.json":
+            continue
+        prefix = p.stem[:6]
+        entry = mapping.get(prefix, {})
+        task_name = entry.get("task_name", "")
+        title = entry.get("title", p.stem)
         lessons.append({
             "file": p.name,
             "stem": p.stem,
             "prefix": prefix,
-            "season": season,
-            "episode": episode,
             "title": title,
             "task_name": task_name,
             "path": str(p.relative_to(PROJECT_ROOT)),
@@ -326,7 +318,8 @@ def lesson_view(filename):
         return "Lesson not found", 404
     content = full.read_text()
     prefix = full.stem[:6]
-    task_name = LESSON_TASK_MAP.get(prefix, "")
+    mapping = _get_lesson_mapping()
+    task_name = mapping.get(prefix, {}).get("task_name", "")
     has_result = (RESULTS_DIR / f"{task_name}.json").exists() if task_name else False
     has_log = (LOGS_DIR / f"{task_name}.log").exists() if task_name else False
     return render_template("lesson.html", filename=filename, content=content,
@@ -336,7 +329,7 @@ def lesson_view(filename):
 @app.route("/run/<identifier>")
 def run_task_page(identifier):
     # Resolve prefix (s01e05) to task_name (railway)
-    task_name = LESSON_TASK_MAP.get(identifier, identifier)
+    task_name = _get_lesson_mapping().get(identifier, {}).get("task_name", identifier)
     return render_template("runner.html", task_name=task_name)
 
 
@@ -345,7 +338,7 @@ _running_procs: dict[str, subprocess.Popen] = {}
 
 @app.route("/api/stop/<identifier>", methods=["POST"])
 def stop_task(identifier):
-    task_name = LESSON_TASK_MAP.get(identifier, identifier)
+    task_name = _get_lesson_mapping().get(identifier, {}).get("task_name", identifier)
     proc = _running_procs.get(task_name)
     if proc and proc.poll() is None:
         import signal
@@ -358,7 +351,7 @@ def stop_task(identifier):
 def run_task_stream(identifier):
     verbose = request.args.get("verbose", "false") == "true"
     # Resolve prefix to task_name
-    task_name = LESSON_TASK_MAP.get(identifier, identifier)
+    task_name = _get_lesson_mapping().get(identifier, {}).get("task_name", identifier)
 
     def generate():
         env = os.environ.copy()
