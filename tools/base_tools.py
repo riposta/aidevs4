@@ -56,6 +56,7 @@ def fetch_url(url: str) -> str:
     url = unquote(url)  # decode %C3%B3 → ó etc.
     url = url.replace("tutaj-twoj-klucz", API_KEY)
     url = url.replace("tutaj-twój-klucz", API_KEY)
+    url = url.replace("{{API_KEY}}", API_KEY)
     url = url.replace("{API_KEY}", API_KEY)
     url = url.replace("{apikey}", API_KEY)
     log.info("Fetching: %s", url)
